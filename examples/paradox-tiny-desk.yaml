@@ -1,0 +1,24 @@
+name: The Paradox Tiny Desk
+public: false
+description: Exact available Spotify tracks from the Tiny Desk setlist.
+tracks:
+  - title: Get The Message
+    artist: The Paradox
+    uri: spotify:track:354WZaV3u6cuzTG2PmpYwm
+  - title: Bender
+    artist: The Paradox, Travis Barker
+    uri: spotify:track:78APbsosmvDYIwZHjzC5ZE
+  - title: Good For Me
+    artist: The Paradox
+    uri: spotify:track:1OAMZ1AV5y6DHI5kzP0L3V
+  - title: I Kinda Like That
+    artist: The Paradox
+    missing: true
+    note: Exact Spotify track not verified.
+  - title: Ms. Lauren
+    artist: The Paradox
+    uri: spotify:track:6FVeZfWkYtDiyyq93dBSXU
+  - title: Do Me Like That
+    artist: The Paradox
+    uri: spotify:track:1y6lq1wrAspWEgRJmYb11S
+
