@@ -10,7 +10,8 @@ def read_uri_lines(path: str | Path) -> list[str]:
     source = Path(path)
     uris: list[str] = []
 
-    for line_number, raw_line in enumerate(source.read_text(encoding="utf-8").splitlines(), start=1):
+    lines = source.read_text(encoding="utf-8").splitlines()
+    for line_number, raw_line in enumerate(lines, start=1):
         value = raw_line.strip()
         if not value or value.startswith("#"):
             continue
@@ -26,4 +27,3 @@ def read_uri_lines(path: str | Path) -> list[str]:
 def read_manifest(path: str | Path) -> object:
     """Placeholder for YAML manifest support."""
     raise NotImplementedError(f"Manifest support is not implemented yet: {path}")
-

@@ -79,7 +79,7 @@ spotify-exact
     verify PLAYLIST_ID --from FILE
 ```
 
-Only `playlist create` dry-run behavior is scaffolded initially. The command tree is structured for the planned MVP.
+`playlist create`, `playlist add`, `playlist verify`, `search track`, and `track show` are implemented. Spotify write operations still require valid credentials and a configured Spotify developer app.
 
 ## Library Usage
 
@@ -128,7 +128,25 @@ python -m mypy src
 
 Spotify integration tests should stay opt-in and only run when `SPOTIFY_EXACT_RUN_INTEGRATION_TESTS=1` is set.
 
+## Current Status
+
+Implemented:
+
+- deterministic input normalization for Spotify track URIs and track URLs
+- ordered playlist creation and add operations with 100-item chunking
+- validation before playlist writes
+- playlist prefix verification
+- read-only track search and track metadata lookup
+- Rich table output and JSON output for search and track inspection
+- mocked unit tests for playlist and search behavior
+
+Still planned:
+
+- integration tests against a real Spotify account
+- richer error mapping for Spotify API failures
+- YAML manifest creation
+- playlist export, repair, and resolve workflows
+
 ## Determinism Policy
 
 The playlist creation path accepts only Spotify track URIs and Spotify track URLs. Human-readable strings such as `Song Title by Artist` are rejected because resolving them would require search and manual review.
-

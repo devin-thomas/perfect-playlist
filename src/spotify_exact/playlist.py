@@ -4,11 +4,12 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import TypeVar
 
-from .client import get_spotify_client
+from .client import PlaylistClient, get_spotify_client
 from .errors import PlaylistAddError, PlaylistCreateError
 from .io import read_uri_lines
 from .models import CreatedPlaylist, PlaylistCreateResult
 from .track_refs import normalize_track_ref
+from .verify import verify_playlist_prefix
 
 T = TypeVar("T")
 DEFAULT_DESCRIPTION = "Created with spotify-exact."
@@ -28,9 +29,10 @@ def create_empty_playlist(
     public: bool = False,
     description: str = DEFAULT_DESCRIPTION,
     collaborative: bool = False,
+    client: PlaylistClient | None = None,
 ) -> CreatedPlaylist:
     """Create an empty Spotify playlist for the current user."""
-    sp = get_spotify_client()
+    sp = client or get_spotify_client()
     user = sp.current_user()
 
     try:
@@ -57,19 +59,23 @@ def add_items_in_order(
     uris: Sequence[str],
     *,
     start_position: int | None = None,
+    client: PlaylistClient | None = None,
 ) -> str:
     """Add items in the exact order provided and return the final snapshot id."""
     normalized = [normalize_track_ref(uri) for uri in uris]
-    sp = get_spotify_client()
+    sp = client or get_spotify_client()
     snapshot_id = ""
 
     for chunk_index, batch in enumerate(chunked(normalized, 100), start=1):
         try:
-            response = sp.playlist_add_items(
-                playlist_id=playlist_id,
-                items=batch,
-                position=start_position if chunk_index == 1 else None,
-            )
+            if start_position is not None and chunk_index == 1:
+                response = sp.playlist_add_items(
+                    playlist_id=playlist_id,
+                    items=batch,
+                    position=start_position,
+                )
+            else:
+                response = sp.playlist_add_items(playlist_id=playlist_id, items=batch)
         except Exception as exc:  # pragma: no cover - exercised by mocked API tests later.
             raise PlaylistAddError(
                 f"Spotify rejected add-items request for chunk {chunk_index}."
@@ -87,6 +93,7 @@ def create_playlist_from_uris(
     description: str = DEFAULT_DESCRIPTION,
     dry_run: bool = False,
     verify: bool = True,
+    client: PlaylistClient | None = None,
 ) -> PlaylistCreateResult:
     """Create a playlist from exact track references."""
     normalized = [normalize_track_ref(uri) for uri in uris]
@@ -103,15 +110,16 @@ def create_playlist_from_uris(
             verified=None,
         )
 
-    playlist = create_empty_playlist(name, public=public, description=description)
-    snapshot_id = add_items_in_order(playlist.id, normalized)
+    sp = client or get_spotify_client()
+    playlist = create_empty_playlist(name, public=public, description=description, client=sp)
+    snapshot_id = add_items_in_order(playlist.id, normalized, client=sp)
     playlist.snapshot_id = snapshot_id
+    verified = verify_playlist_prefix(playlist.id, normalized, client=sp) if verify else None
 
     return PlaylistCreateResult(
         playlist=playlist,
         added_uris=normalized,
-        verified=False if verify else None,
-        warnings=["Verification is scaffolded but not implemented yet."] if verify else [],
+        verified=verified,
     )
 
 
@@ -123,6 +131,7 @@ def create_playlist_from_file(
     description: str = DEFAULT_DESCRIPTION,
     dry_run: bool = False,
     verify: bool = True,
+    client: PlaylistClient | None = None,
 ) -> PlaylistCreateResult:
     """Read exact track references from a file and create a playlist."""
     return create_playlist_from_uris(
@@ -132,5 +141,5 @@ def create_playlist_from_file(
         description=description,
         dry_run=dry_run,
         verify=verify,
+        client=client,
     )
-
