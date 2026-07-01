@@ -1,4 +1,4 @@
-from spotify_exact.playlist import chunked
+from perfect_playlist.playlist import chunked
 
 
 def test_chunked_splits_spotify_batch_size() -> None:

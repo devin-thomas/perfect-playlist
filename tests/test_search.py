@@ -4,8 +4,8 @@ from typing import Any
 import pytest
 from spotipy.exceptions import SpotifyException
 
-from spotify_exact.errors import TrackLookupError
-from spotify_exact.search import get_tracks, search_tracks
+from perfect_playlist.errors import TrackLookupError
+from perfect_playlist.search import get_tracks, search_tracks
 
 TRACK = {
     "uri": "spotify:track:354WZaV3u6cuzTG2PmpYwm",

@@ -1,7 +1,7 @@
 import pytest
 
-from spotify_exact.errors import InvalidTrackRefError
-from spotify_exact.track_refs import extract_track_id, is_track_uri, normalize_track_ref
+from perfect_playlist.errors import InvalidTrackRefError
+from perfect_playlist.track_refs import extract_track_id, is_track_uri, normalize_track_ref
 
 TRACK_ID = "354WZaV3u6cuzTG2PmpYwm"
 

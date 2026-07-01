@@ -12,7 +12,7 @@ from .track_refs import normalize_track_ref
 from .verify import verify_playlist_prefix
 
 T = TypeVar("T")
-DEFAULT_DESCRIPTION = "Created with spotify-exact."
+DEFAULT_DESCRIPTION = "Created with perfect-playlist."
 
 
 def chunked(items: Sequence[T], size: int = 100) -> Iterable[list[T]]:

@@ -1,4 +1,4 @@
-# Spotify Exact Playlist CLI — Build Plan
+# Perfect Playlist Playlist CLI — Build Plan
 
 ## Goal
 
@@ -112,7 +112,7 @@ spotify:track:1y6lq1wrAspWEgRJmYb11S
 Command:
 
 ```powershell
-spotify-exact playlist create "The Paradox Tiny Desk - Available Tracks" --private --from paradox.txt
+perfect-playlist playlist create "The Paradox Tiny Desk - Available Tracks" --private --from paradox.txt
 ```
 
 Expected behavior:
@@ -128,7 +128,7 @@ Expected behavior:
 ## Search flow: find exact track candidates
 
 ```powershell
-spotify-exact search track 'track:"Get The Message" artist:"The Paradox"' --limit 10
+perfect-playlist search track 'track:"Get The Message" artist:"The Paradox"' --limit 10
 ```
 
 Output should show a table:
@@ -144,7 +144,7 @@ The search command may be fuzzy because Spotify search itself is fuzzy. The play
 ## Dry run flow
 
 ```powershell
-spotify-exact playlist create "Test Playlist" --private --from paradox.txt --dry-run
+perfect-playlist playlist create "Test Playlist" --private --from paradox.txt --dry-run
 ```
 
 Expected behavior:
@@ -163,14 +163,14 @@ Expected behavior:
 ## Project layout
 
 ```text
-spotify-exact/
+perfect-playlist/
   README.md
   LICENSE
   pyproject.toml
   .gitignore
   .env.example
   src/
-    spotify_exact/
+    perfect_playlist/
       __init__.py
       auth.py
       client.py
@@ -229,7 +229,7 @@ Suggested environment variables:
 SPOTIPY_CLIENT_ID=...
 SPOTIPY_CLIENT_SECRET=...
 SPOTIPY_REDIRECT_URI=http://127.0.0.1:8888/callback
-SPOTIFY_EXACT_TOKEN_CACHE=...
+PERFECT_PLAYLIST_TOKEN_CACHE=...
 ```
 
 ### `client.py`
@@ -471,7 +471,7 @@ Thin Typer wrapper.
 Suggested command tree:
 
 ```text
-spotify-exact
+perfect-playlist
   auth
     login
     status
@@ -500,7 +500,7 @@ The package should be useful from Python with minimal ceremony.
 ## Example: create a playlist from exact URIs
 
 ```python
-from spotify_exact import create_playlist_from_uris
+from perfect_playlist import create_playlist_from_uris
 
 result = create_playlist_from_uris(
     name="The Paradox Tiny Desk - Available Tracks",
@@ -521,7 +521,7 @@ print(result.playlist.url)
 ## Example: search and manually choose
 
 ```python
-from spotify_exact import search_tracks
+from perfect_playlist import search_tracks
 
 matches = search_tracks('track:"I Kinda Like That" artist:"The Paradox"')
 for match in matches:
@@ -531,7 +531,7 @@ for match in matches:
 ## Example: create from a file
 
 ```python
-from spotify_exact import create_playlist_from_file
+from perfect_playlist import create_playlist_from_file
 
 result = create_playlist_from_file(
     name="Setlist",
@@ -542,7 +542,7 @@ result = create_playlist_from_file(
 
 ## Package exports
 
-`src/spotify_exact/__init__.py` should export a carefully chosen API:
+`src/perfect_playlist/__init__.py` should export a carefully chosen API:
 
 ```python
 from .playlist import (
@@ -619,7 +619,7 @@ Default YAML behavior should be strict:
 ## `auth login`
 
 ```powershell
-spotify-exact auth login
+perfect-playlist auth login
 ```
 
 Expected behavior:
@@ -632,7 +632,7 @@ Expected behavior:
 ## `auth status`
 
 ```powershell
-spotify-exact auth status
+perfect-playlist auth status
 ```
 
 Expected behavior:
@@ -644,7 +644,7 @@ Expected behavior:
 ## `search track`
 
 ```powershell
-spotify-exact search track 'track:"Get The Message" artist:"The Paradox"' --market US --limit 10
+perfect-playlist search track 'track:"Get The Message" artist:"The Paradox"' --market US --limit 10
 ```
 
 Expected behavior:
@@ -655,7 +655,7 @@ Expected behavior:
 ## `track show`
 
 ```powershell
-spotify-exact track show spotify:track:354WZaV3u6cuzTG2PmpYwm
+perfect-playlist track show spotify:track:354WZaV3u6cuzTG2PmpYwm
 ```
 
 Expected behavior:
@@ -667,7 +667,7 @@ Expected behavior:
 ## `playlist create`
 
 ```powershell
-spotify-exact playlist create "Playlist Name" --from tracks.txt --private --verify
+perfect-playlist playlist create "Playlist Name" --from tracks.txt --private --verify
 ```
 
 Expected behavior:
@@ -681,7 +681,7 @@ Expected behavior:
 ## `playlist add`
 
 ```powershell
-spotify-exact playlist add 3cEYpjA9oz9GiPac4AsH4n --from tracks.txt --position 0
+perfect-playlist playlist add 3cEYpjA9oz9GiPac4AsH4n --from tracks.txt --position 0
 ```
 
 Expected behavior:
@@ -693,7 +693,7 @@ Expected behavior:
 ## `playlist verify`
 
 ```powershell
-spotify-exact playlist verify 3cEYpjA9oz9GiPac4AsH4n --from tracks.txt
+perfect-playlist playlist verify 3cEYpjA9oz9GiPac4AsH4n --from tracks.txt
 ```
 
 Expected behavior:
@@ -717,7 +717,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "spotify-exact"
+name = "perfect-playlist"
 version = "0.1.0"
 description = "Deterministic Spotify playlist creation from exact track URIs."
 readme = "README.md"
@@ -746,7 +746,7 @@ yaml = [
 ]
 
 [project.scripts]
-spotify-exact = "spotify_exact.cli:app"
+perfect-playlist = "perfect_playlist.cli:app"
 
 [tool.ruff]
 line-length = 100
@@ -759,7 +759,7 @@ strict = true
 ## Install locally while developing
 
 ```powershell
-cd C:\dev\spotify-exact
+cd C:\dev\perfect-playlist
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e ".[dev,yaml]"
@@ -768,13 +768,13 @@ pip install -e ".[dev,yaml]"
 ## Install as a CLI with `pipx`
 
 ```powershell
-pipx install C:\dev\spotify-exact
+pipx install C:\dev\perfect-playlist
 ```
 
 ## Run without installing globally
 
 ```powershell
-python -m spotify_exact.cli --help
+python -m perfect_playlist.cli --help
 ```
 
 ---
@@ -942,14 +942,14 @@ Verify:
 Run only when credentials are present:
 
 ```powershell
-$env:SPOTIFY_EXACT_RUN_INTEGRATION_TESTS="1"
+$env:PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS="1"
 pytest tests/integration
 ```
 
 Integration tests should create test playlists with obvious names like:
 
 ```text
-spotify-exact integration test - DELETE ME - 2026-06-30
+perfect-playlist integration test - DELETE ME - 2026-06-30
 ```
 
 They should not run by default.
@@ -1028,7 +1028,7 @@ For MVP, keep writes simple:
 The default creation path accepts only exact track URIs/URLs.
 
 ```powershell
-spotify-exact playlist create "Name" --from tracks.txt
+perfect-playlist playlist create "Name" --from tracks.txt
 ```
 
 This path should never search.
@@ -1038,7 +1038,7 @@ This path should never search.
 A later command can help resolve human-readable setlists:
 
 ```powershell
-spotify-exact resolve setlist setlist.yaml --out resolved.yaml
+perfect-playlist resolve setlist setlist.yaml --out resolved.yaml
 ```
 
 But it should require review before creation.
@@ -1060,7 +1060,7 @@ This keeps fuzzy search separate from deterministic writes.
 ## Simple function call
 
 ```python
-from spotify_exact import create_playlist_from_uris
+from perfect_playlist import create_playlist_from_uris
 
 uris = [
     "spotify:track:354WZaV3u6cuzTG2PmpYwm",
@@ -1074,7 +1074,7 @@ print(result.playlist.url)
 ## Use as part of a larger script
 
 ```python
-from spotify_exact import search_tracks, create_playlist_from_uris
+from perfect_playlist import search_tracks, create_playlist_from_uris
 
 queries = [
     'track:"Get The Message" artist:"The Paradox"',
@@ -1096,7 +1096,7 @@ create_playlist_from_uris("Resolved Playlist", resolved, public=False)
 CLI commands should support `--json` so other languages can call the CLI.
 
 ```powershell
-spotify-exact search track 'track:"Bender" artist:"The Paradox"' --json
+perfect-playlist search track 'track:"Bender" artist:"The Paradox"' --json
 ```
 
 Possible output:
@@ -1122,7 +1122,7 @@ Possible output:
 Command:
 
 ```powershell
-spotify-exact playlist repair PLAYLIST_ID --from tracks.txt
+perfect-playlist playlist repair PLAYLIST_ID --from tracks.txt
 ```
 
 Possible strategies:
@@ -1139,7 +1139,7 @@ This should be opt-in and dry-run by default.
 Command:
 
 ```powershell
-spotify-exact playlist export PLAYLIST_ID --out playlist.txt
+perfect-playlist playlist export PLAYLIST_ID --out playlist.txt
 ```
 
 Use cases:
@@ -1168,7 +1168,7 @@ This is optional. The importable Python package and CLI should come first.
 Command:
 
 ```powershell
-spotify-exact playlist create "Clipboard Playlist" --from-clipboard
+perfect-playlist playlist create "Clipboard Playlist" --from-clipboard
 ```
 
 Useful for copying a block of Spotify links from notes.
@@ -1178,7 +1178,7 @@ Useful for copying a block of Spotify links from notes.
 Later package publishing could allow:
 
 ```powershell
-uvx spotify-exact playlist create "Name" --from tracks.txt
+uvx perfect-playlist playlist create "Name" --from tracks.txt
 ```
 
 ---
@@ -1190,7 +1190,7 @@ uvx spotify-exact playlist create "Name" --from tracks.txt
 - [ ] Create Spotify developer app.
 - [ ] Add redirect URI using `127.0.0.1`, not `localhost`.
 - [ ] Create `.env` locally.
-- [ ] Create repo in `C:\dev\spotify-exact`.
+- [ ] Create repo in `C:\dev\perfect-playlist`.
 - [ ] Add `.gitignore` before creating token cache.
 
 ## MVP coding order
@@ -1221,7 +1221,7 @@ spotify:track:1y6lq1wrAspWEgRJmYb11S
 Run:
 
 ```powershell
-spotify-exact playlist create "The Paradox Tiny Desk - Available Tracks" --private --from examples/paradox-tiny-desk.txt --verify
+perfect-playlist playlist create "The Paradox Tiny Desk - Available Tracks" --private --from examples/paradox-tiny-desk.txt --verify
 ```
 
 Expected result:
@@ -1238,7 +1238,7 @@ Expected result:
 This is not the full implementation, but it shows the intended separation between reusable functions and CLI.
 
 ```python
-# src/spotify_exact/playlist.py
+# src/perfect_playlist/playlist.py
 from collections.abc import Sequence
 
 from .client import get_spotify_client
@@ -1255,7 +1255,7 @@ def create_playlist_from_uris(
     uris: Sequence[str],
     *,
     public: bool = False,
-    description: str = "Created with spotify-exact",
+    description: str = "Created with perfect-playlist",
     dry_run: bool = False,
 ):
     normalized = [normalize_track_ref(uri) for uri in uris]
@@ -1292,7 +1292,7 @@ def create_playlist_from_uris(
 ```
 
 ```python
-# src/spotify_exact/cli.py
+# src/perfect_playlist/cli.py
 import typer
 from rich import print
 

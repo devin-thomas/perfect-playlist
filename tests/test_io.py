@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from spotify_exact.io import read_uri_lines
+from perfect_playlist.io import read_uri_lines
 
 
 def test_read_uri_lines_preserves_order_and_duplicates(tmp_path: Path) -> None:

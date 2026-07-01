@@ -4,8 +4,8 @@ from typing import Any
 import pytest
 from spotipy.exceptions import SpotifyException
 
-from spotify_exact.errors import InvalidTrackRefError, PlaylistAddError, PlaylistCreateError
-from spotify_exact.playlist import add_items_in_order, create_playlist_from_uris
+from perfect_playlist.errors import InvalidTrackRefError, PlaylistAddError, PlaylistCreateError
+from perfect_playlist.playlist import add_items_in_order, create_playlist_from_uris
 
 
 def _track_uri(index: int) -> str:

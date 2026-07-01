@@ -1,4 +1,4 @@
-"""Public API for spotify-exact."""
+"""Public API for perfect-playlist."""
 
 from .io import read_uri_lines
 from .models import CreatedPlaylist, PlaylistCreateResult, TrackRef, TrackSummary

@@ -3,8 +3,8 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from spotify_exact.cli import app
-from spotify_exact.models import TrackSummary
+from perfect_playlist.cli import app
+from perfect_playlist.models import TrackSummary
 
 
 def test_cli_help() -> None:
@@ -50,7 +50,7 @@ def test_search_track_json(monkeypatch: pytest.MonkeyPatch) -> None:
             )
         ]
 
-    monkeypatch.setattr("spotify_exact.cli.search_tracks", fake_search_tracks)
+    monkeypatch.setattr("perfect_playlist.cli.search_tracks", fake_search_tracks)
 
     result = CliRunner().invoke(
         app,
@@ -75,7 +75,7 @@ def test_track_show_json(monkeypatch: pytest.MonkeyPatch) -> None:
             )
         ]
 
-    monkeypatch.setattr("spotify_exact.cli.get_tracks", fake_get_tracks)
+    monkeypatch.setattr("perfect_playlist.cli.get_tracks", fake_get_tracks)
 
     result = CliRunner().invoke(
         app,

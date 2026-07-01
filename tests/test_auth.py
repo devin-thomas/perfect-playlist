@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from spotify_exact.auth import build_auth_manager
-from spotify_exact.errors import AuthConfigError
+from perfect_playlist.auth import build_auth_manager
+from perfect_playlist.errors import AuthConfigError
 
 
 def test_build_auth_manager_reports_missing_env_without_values(

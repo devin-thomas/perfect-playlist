@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "spotify-exact"
+name = "perfect-playlist"
 version = "0.1.0"
 description = "Deterministic Spotify playlist creation from exact track URIs."
 readme = "README.md"
@@ -32,8 +32,13 @@ yaml = [
   "pyyaml>=6.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/devin-thomas/perfect-playlist"
+Repository = "https://github.com/devin-thomas/perfect-playlist"
+Issues = "https://github.com/devin-thomas/perfect-playlist/issues"
+
 [project.scripts]
-spotify-exact = "spotify_exact.cli:app"
+perfect-playlist = "perfect_playlist.cli:app"
 
 [tool.ruff]
 line-length = 100

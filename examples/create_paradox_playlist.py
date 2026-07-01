@@ -1,4 +1,4 @@
-from spotify_exact import create_playlist_from_file
+from perfect_playlist import create_playlist_from_file
 
 if __name__ == "__main__":
     result = create_playlist_from_file(

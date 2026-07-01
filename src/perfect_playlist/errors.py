@@ -1,5 +1,5 @@
 class SpotifyExactError(Exception):
-    """Base exception for spotify-exact."""
+    """Base exception for perfect-playlist."""
 
 
 class InvalidTrackRefError(SpotifyExactError):

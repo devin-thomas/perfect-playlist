@@ -1,8 +1,8 @@
-# spotify-exact
+# perfect-playlist
 
 Deterministic Spotify playlist creation from exact track URIs.
 
-`spotify-exact` is a local CLI and importable Python package for creating Spotify playlists from an ordered list of exact Spotify track URIs or track URLs. It does not search, substitute, reorder, or silently skip tracks during playlist creation.
+`perfect-playlist` is a local CLI and importable Python package for creating Spotify playlists from an ordered list of exact Spotify track URIs or track URLs. It does not search, substitute, reorder, or silently skip tracks during playlist creation.
 
 ## Why This Exists
 
@@ -53,19 +53,19 @@ spotify:track:1y6lq1wrAspWEgRJmYb11S
 Dry run first:
 
 ```powershell
-spotify-exact playlist create "The Paradox Tiny Desk - Available Tracks" --private --from examples/paradox-tiny-desk.txt --dry-run
+perfect-playlist playlist create "The Paradox Tiny Desk - Available Tracks" --private --from examples/paradox-tiny-desk.txt --dry-run
 ```
 
 Create the playlist:
 
 ```powershell
-spotify-exact playlist create "The Paradox Tiny Desk - Available Tracks" --private --from examples/paradox-tiny-desk.txt --verify
+perfect-playlist playlist create "The Paradox Tiny Desk - Available Tracks" --private --from examples/paradox-tiny-desk.txt --verify
 ```
 
 ## CLI Shape
 
 ```text
-spotify-exact
+perfect-playlist
   auth
     login
     status
@@ -84,7 +84,7 @@ spotify-exact
 ## Library Usage
 
 ```python
-from spotify_exact import create_playlist_from_uris
+from perfect_playlist import create_playlist_from_uris
 
 result = create_playlist_from_uris(
     name="My Exact Playlist",
@@ -102,7 +102,7 @@ print(result.added_uris)
 ## Project Structure
 
 ```text
-src/spotify_exact/
+src/perfect_playlist/
   auth.py         OAuth manager setup
   client.py       Spotify client factory
   cli.py          Thin Typer CLI
@@ -126,7 +126,7 @@ python -m ruff check .
 python -m mypy src
 ```
 
-Spotify integration tests should stay opt-in and only run when `SPOTIFY_EXACT_RUN_INTEGRATION_TESTS=1` is set.
+Spotify integration tests should stay opt-in and only run when `PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS=1` is set.
 
 ## Spotify Integration Validation
 
@@ -141,11 +141,11 @@ SPOTIPY_REDIRECT_URI=http://127.0.0.1:8888/callback
 Then run:
 
 ```powershell
-$env:SPOTIFY_EXACT_RUN_INTEGRATION_TESTS="1"
+$env:PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS="1"
 python -m pytest tests/integration
 ```
 
-The integration test creates a private playlist named `spotify-exact integration test - DELETE ME - <timestamp>` and verifies that the Spotify track order matches `examples/paradox-tiny-desk.txt`.
+The integration test creates a private playlist named `perfect-playlist integration test - DELETE ME - <timestamp>` and verifies that the Spotify track order matches `examples/paradox-tiny-desk.txt`.
 
 ## Current Status
 
@@ -156,13 +156,13 @@ Implemented:
 - validation before playlist writes
 - playlist prefix verification
 - read-only track search and track metadata lookup
+- typed Spotify auth and API error handling
 - Rich table output and JSON output for search and track inspection
 - mocked unit tests for playlist and search behavior
 
 Still planned:
 
 - a credentialed run of the opt-in Spotify integration test
-- richer error mapping for Spotify API failures
 - YAML manifest creation
 - playlist export, repair, and resolve workflows
 
