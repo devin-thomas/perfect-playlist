@@ -128,6 +128,25 @@ python -m mypy src
 
 Spotify integration tests should stay opt-in and only run when `SPOTIFY_EXACT_RUN_INTEGRATION_TESTS=1` is set.
 
+## Spotify Integration Validation
+
+The default test suite does not contact Spotify. To run the real integration check, configure a local `.env` with:
+
+```env
+SPOTIPY_CLIENT_ID=your_client_id_here
+SPOTIPY_CLIENT_SECRET=your_client_secret_here
+SPOTIPY_REDIRECT_URI=http://127.0.0.1:8888/callback
+```
+
+Then run:
+
+```powershell
+$env:SPOTIFY_EXACT_RUN_INTEGRATION_TESTS="1"
+python -m pytest tests/integration
+```
+
+The integration test creates a private playlist named `spotify-exact integration test - DELETE ME - <timestamp>` and verifies that the Spotify track order matches `examples/paradox-tiny-desk.txt`.
+
 ## Current Status
 
 Implemented:
@@ -142,7 +161,7 @@ Implemented:
 
 Still planned:
 
-- integration tests against a real Spotify account
+- a credentialed run of the opt-in Spotify integration test
 - richer error mapping for Spotify API failures
 - YAML manifest creation
 - playlist export, repair, and resolve workflows

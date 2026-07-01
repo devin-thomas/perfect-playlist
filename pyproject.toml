@@ -15,6 +15,7 @@ authors = [
 dependencies = [
   "spotipy>=2.25",
   "python-dotenv>=1.0",
+  "requests>=2.25",
   "typer>=0.12",
   "rich>=13.0",
   "pydantic>=2.0",

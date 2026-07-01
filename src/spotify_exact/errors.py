@@ -21,3 +21,10 @@ class PlaylistVerificationError(SpotifyExactError):
 class AuthConfigError(SpotifyExactError):
     """Raised when Spotify auth configuration is missing or invalid."""
 
+
+class SpotifyApiError(SpotifyExactError):
+    """Raised when Spotify or Spotipy rejects an API operation."""
+
+
+class TrackLookupError(SpotifyApiError):
+    """Raised when track search or metadata lookup fails."""

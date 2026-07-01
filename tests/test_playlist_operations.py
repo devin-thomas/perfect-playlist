@@ -2,8 +2,9 @@ from collections.abc import Sequence
 from typing import Any
 
 import pytest
+from spotipy.exceptions import SpotifyException
 
-from spotify_exact.errors import InvalidTrackRefError
+from spotify_exact.errors import InvalidTrackRefError, PlaylistAddError, PlaylistCreateError
 from spotify_exact.playlist import add_items_in_order, create_playlist_from_uris
 
 
@@ -68,6 +69,21 @@ class PlaylistClient:
         }
 
 
+class FailingCurrentUserClient(PlaylistClient):
+    def current_user(self) -> dict[str, object]:
+        raise SpotifyException(401, -1, "unauthorized")
+
+
+class FailingAddClient(PlaylistClient):
+    def playlist_add_items(
+        self,
+        playlist_id: str,
+        items: Sequence[str],
+        position: int | None = None,
+    ) -> dict[str, Any]:
+        raise SpotifyException(500, -1, "server error")
+
+
 def test_create_playlist_validates_before_write() -> None:
     client = PlaylistClient()
 
@@ -111,3 +127,22 @@ def test_add_items_in_order_chunks_sequentially_and_positions_first_chunk_only()
         "items": uris[100:],
         "kwargs": {"position": None},
     }
+
+
+def test_create_playlist_maps_spotify_create_failure() -> None:
+    with pytest.raises(PlaylistCreateError, match="Spotify rejected playlist creation"):
+        create_playlist_from_uris("Exact", [_track_uri(1)], client=FailingCurrentUserClient())
+
+
+def test_add_items_reports_chunk_and_partial_playlist_url() -> None:
+    with pytest.raises(PlaylistAddError) as exc_info:
+        add_items_in_order(
+            "playlist-123",
+            [_track_uri(1)],
+            playlist_url="https://open.spotify.com/playlist/playlist-123",
+            client=FailingAddClient(),
+        )
+
+    message = str(exc_info.value)
+    assert "chunk 1" in message
+    assert "https://open.spotify.com/playlist/playlist-123" in message

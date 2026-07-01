@@ -4,7 +4,7 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import TypeVar
 
-from .client import PlaylistClient, get_spotify_client
+from .client import SPOTIFY_API_EXCEPTIONS, PlaylistClient, get_spotify_client
 from .errors import PlaylistAddError, PlaylistCreateError
 from .io import read_uri_lines
 from .models import CreatedPlaylist, PlaylistCreateResult
@@ -33,9 +33,9 @@ def create_empty_playlist(
 ) -> CreatedPlaylist:
     """Create an empty Spotify playlist for the current user."""
     sp = client or get_spotify_client()
-    user = sp.current_user()
 
     try:
+        user = sp.current_user()
         playlist = sp.user_playlist_create(
             user=user["id"],
             name=name,
@@ -43,7 +43,7 @@ def create_empty_playlist(
             description=description,
             collaborative=collaborative,
         )
-    except Exception as exc:  # pragma: no cover - exercised by mocked API tests later.
+    except SPOTIFY_API_EXCEPTIONS as exc:
         raise PlaylistCreateError(f"Spotify rejected playlist creation for {name!r}.") from exc
 
     return CreatedPlaylist(
@@ -59,6 +59,7 @@ def add_items_in_order(
     uris: Sequence[str],
     *,
     start_position: int | None = None,
+    playlist_url: str | None = None,
     client: PlaylistClient | None = None,
 ) -> str:
     """Add items in the exact order provided and return the final snapshot id."""
@@ -76,9 +77,10 @@ def add_items_in_order(
                 )
             else:
                 response = sp.playlist_add_items(playlist_id=playlist_id, items=batch)
-        except Exception as exc:  # pragma: no cover - exercised by mocked API tests later.
+        except SPOTIFY_API_EXCEPTIONS as exc:
+            partial_state = f" Playlist may be incomplete: {playlist_url}" if playlist_url else ""
             raise PlaylistAddError(
-                f"Spotify rejected add-items request for chunk {chunk_index}."
+                f"Spotify rejected add-items request for chunk {chunk_index}.{partial_state}"
             ) from exc
         snapshot_id = response.get("snapshot_id", snapshot_id)
 
@@ -112,7 +114,7 @@ def create_playlist_from_uris(
 
     sp = client or get_spotify_client()
     playlist = create_empty_playlist(name, public=public, description=description, client=sp)
-    snapshot_id = add_items_in_order(playlist.id, normalized, client=sp)
+    snapshot_id = add_items_in_order(playlist.id, normalized, playlist_url=playlist.url, client=sp)
     playlist.snapshot_id = snapshot_id
     verified = verify_playlist_prefix(playlist.id, normalized, client=sp) if verify else None
 

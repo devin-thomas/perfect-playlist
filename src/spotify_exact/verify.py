@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from .client import PlaylistClient, get_spotify_client
+from .client import SPOTIFY_API_EXCEPTIONS, PlaylistClient, get_spotify_client
 from .errors import PlaylistVerificationError
 from .track_refs import normalize_track_ref
 
@@ -21,12 +21,17 @@ def get_playlist_track_uris(
 
     while remaining is None or remaining > 0:
         page_limit = min(100, remaining) if remaining is not None else 100
-        response = sp.playlist_items(
-            playlist_id,
-            fields="items(track(uri)),next",
-            limit=page_limit,
-            offset=offset,
-        )
+        try:
+            response = sp.playlist_items(
+                playlist_id,
+                fields="items(track(uri)),next",
+                limit=page_limit,
+                offset=offset,
+            )
+        except SPOTIFY_API_EXCEPTIONS as exc:
+            raise PlaylistVerificationError(
+                f"Spotify playlist verification read failed for playlist {playlist_id}."
+            ) from exc
         items = response.get("items", [])
         if not items:
             break

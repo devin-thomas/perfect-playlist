@@ -3,7 +3,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from .client import TrackLookupClient, get_spotify_client
+from .client import SPOTIFY_API_EXCEPTIONS, TrackLookupClient, get_spotify_client
+from .errors import TrackLookupError
 from .models import TrackSummary
 from .track_refs import normalize_track_ref
 
@@ -31,7 +32,10 @@ def search_tracks(
 ) -> list[TrackSummary]:
     """Search Spotify track candidates without writing to Spotify."""
     sp = client or get_spotify_client()
-    response = sp.search(q=query, type="track", limit=limit, market=market)
+    try:
+        response = sp.search(q=query, type="track", limit=limit, market=market)
+    except SPOTIFY_API_EXCEPTIONS as exc:
+        raise TrackLookupError(f"Spotify track search failed for query: {query}") from exc
     items = response.get("tracks", {}).get("items", [])
     return [_track_summary(track) for track in items]
 
@@ -46,5 +50,8 @@ def get_tracks(
     normalized = [normalize_track_ref(uri) for uri in uris]
     ids = [uri.rsplit(":", 1)[1] for uri in normalized]
     sp = client or get_spotify_client()
-    response = sp.tracks(ids, market=market)
+    try:
+        response = sp.tracks(ids, market=market)
+    except SPOTIFY_API_EXCEPTIONS as exc:
+        raise TrackLookupError("Spotify track metadata lookup failed.") from exc
     return [_track_summary(track) for track in response.get("tracks", []) if track]

@@ -9,6 +9,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from .client import SPOTIFY_API_EXCEPTIONS
 from .errors import SpotifyExactError
 from .io import read_uri_lines
 from .models import TrackSummary
@@ -70,7 +71,11 @@ def auth_login() -> None:
 
     try:
         user = get_spotify_client().current_user()
-    except Exception as exc:  # pragma: no cover - depends on external auth.
+    except SpotifyExactError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(3) from exc
+    except SPOTIFY_API_EXCEPTIONS as exc:  # pragma: no cover - depends on external auth.
+        console.print("[red]Spotify auth failed. Check local Spotify credentials.[/red]")
         raise typer.Exit(3) from exc
 
     console.print(f"Authenticated as {user.get('display_name') or user.get('id')}")

@@ -4,8 +4,12 @@ from collections.abc import Sequence
 from typing import Any, Protocol, cast
 
 import spotipy
+from requests.exceptions import RequestException
+from spotipy.exceptions import SpotifyException, SpotifyOauthError
 
 from .auth import build_auth_manager
+
+SPOTIFY_API_EXCEPTIONS = (SpotifyException, SpotifyOauthError, RequestException)
 
 
 class PlaylistClient(Protocol):
