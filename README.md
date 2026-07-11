@@ -62,6 +62,16 @@ Create the playlist:
 perfect-playlist playlist create "The Paradox Tiny Desk - Available Tracks" --private --from examples/paradox-tiny-desk.txt --verify
 ```
 
+Create from a strict YAML manifest:
+
+```powershell
+perfect-playlist playlist create --manifest examples/paradox-tiny-desk.yaml --dry-run
+```
+
+Manifest entries must contain an exact Spotify track URI or URL. Entries marked
+`missing: true` are excluded from the write while preserving the order of all
+verified tracks; any other entry without a URI fails validation.
+
 ## CLI Shape
 
 ```text
@@ -163,7 +173,6 @@ Implemented:
 Still planned:
 
 - a credentialed run of the opt-in Spotify integration test
-- YAML manifest creation
 - playlist export, repair, and resolve workflows
 
 ## Determinism Policy

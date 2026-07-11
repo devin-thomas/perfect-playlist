@@ -11,7 +11,7 @@ from rich.table import Table
 
 from .client import SPOTIFY_API_EXCEPTIONS
 from .errors import SpotifyExactError
-from .io import read_uri_lines
+from .io import read_manifest, read_uri_lines
 from .models import TrackSummary
 from .playlist import add_items_in_order, create_playlist_from_uris
 from .search import get_tracks, search_tracks
@@ -33,6 +33,7 @@ console = Console()
 
 
 InputFileOption = typer.Option("--from", exists=True, dir_okay=False)
+ManifestFileOption = typer.Option("--manifest", exists=True, dir_okay=False)
 
 
 def _print_track_table(title: str, tracks: Sequence[TrackSummary]) -> None:
@@ -89,24 +90,42 @@ def auth_status() -> None:
 
 @playlist_app.command("create")
 def playlist_create(
-    name: str,
-    from_file: Annotated[Path, InputFileOption],
+    name: str = typer.Argument("", help="Playlist name; omitted when using --manifest."),
+    from_file: Annotated[Path | None, InputFileOption] = None,
+    manifest_file: Annotated[Path | None, ManifestFileOption] = None,
     private: Annotated[bool, typer.Option("--private", help="Create a private playlist.")] = False,
     public: Annotated[bool, typer.Option("--public", help="Create a public playlist.")] = False,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Validate without writing.")] = False,
     verify: Annotated[bool, typer.Option("--verify/--no-verify")] = True,
 ) -> None:
-    """Create a playlist from exact track URIs or URLs."""
+    """Create a playlist from exact track URIs, URLs, or a YAML manifest."""
     if private and public:
         console.print("[red]Choose either --private or --public, not both.[/red]")
         raise typer.Exit(2)
 
     try:
-        uris = read_uri_lines(from_file)
+        description = ""
+        if from_file is not None and manifest_file is not None:
+            raise SpotifyExactError("Choose either --from or --manifest, not both.")
+        if manifest_file is not None:
+            if name:
+                raise SpotifyExactError("Do not provide NAME when using --manifest.")
+            if private or public:
+                raise SpotifyExactError("Playlist visibility is defined by the manifest.")
+            manifest = read_manifest(manifest_file)
+            name = manifest.name
+            public = manifest.public
+            description = manifest.description
+            uris = manifest.uris
+        else:
+            if not name or from_file is None:
+                raise SpotifyExactError("Provide NAME and --from, or use --manifest.")
+            uris = read_uri_lines(from_file)
         result = create_playlist_from_uris(
             name=name,
             uris=uris,
             public=public and not private,
+            description=description,
             dry_run=dry_run,
             verify=verify,
         )

@@ -1,7 +1,14 @@
 """Public API for perfect-playlist."""
 
-from .io import read_uri_lines
-from .models import CreatedPlaylist, PlaylistCreateResult, TrackRef, TrackSummary
+from .io import read_manifest, read_uri_lines
+from .models import (
+    CreatedPlaylist,
+    PlaylistCreateResult,
+    PlaylistManifest,
+    PlaylistManifestTrack,
+    TrackRef,
+    TrackSummary,
+)
 from .playlist import (
     add_items_in_order,
     chunked,
@@ -16,6 +23,8 @@ from .verify import verify_playlist_prefix
 __all__ = [
     "CreatedPlaylist",
     "PlaylistCreateResult",
+    "PlaylistManifest",
+    "PlaylistManifestTrack",
     "TrackRef",
     "TrackSummary",
     "add_items_in_order",
@@ -27,8 +36,8 @@ __all__ = [
     "get_tracks",
     "is_track_uri",
     "normalize_track_ref",
+    "read_manifest",
     "read_uri_lines",
     "search_tracks",
     "verify_playlist_prefix",
 ]
-

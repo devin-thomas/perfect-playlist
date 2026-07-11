@@ -22,6 +22,10 @@ class AuthConfigError(SpotifyExactError):
     """Raised when Spotify auth configuration is missing or invalid."""
 
 
+class ManifestError(SpotifyExactError):
+    """Raised when a playlist manifest is malformed or invalid."""
+
+
 class SpotifyApiError(SpotifyExactError):
     """Raised when Spotify or Spotipy rejects an API operation."""
 

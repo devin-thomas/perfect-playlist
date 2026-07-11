@@ -1329,3 +1329,14 @@ def playlist_create(
 - Spotify Web API — Add Items to Playlist: https://developer.spotify.com/documentation/web-api/reference/add-tracks-to-playlist
 - Spotify Web API — Redirect URIs: https://developer.spotify.com/documentation/web-api/concepts/redirect_uri
 - Spotipy documentation: https://spotipy.readthedocs.io/en/2.25.1/
+
+## Progress and Handoff
+
+- 2026-07-10: The first unfinished product task, strict YAML manifest support,
+  is complete. `read_manifest()` validates metadata and exact track references,
+  excludes entries marked `missing: true`, and the CLI supports
+  `playlist create --manifest FILE`.
+- Verification completed: targeted manifest, CLI, and IO tests pass; full-suite
+  verification passes with the opt-in integration test skipped.
+- The opt-in Spotify integration test still requires local credentials and was
+  intentionally not run against the external API.

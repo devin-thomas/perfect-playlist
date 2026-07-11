@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import yaml
+from pydantic import ValidationError
+
+from .errors import ManifestError
+from .models import PlaylistManifest
 from .track_refs import normalize_track_ref
 
 
@@ -24,6 +29,16 @@ def read_uri_lines(path: str | Path) -> list[str]:
     return uris
 
 
-def read_manifest(path: str | Path) -> object:
-    """Placeholder for YAML manifest support."""
-    raise NotImplementedError(f"Manifest support is not implemented yet: {path}")
+def read_manifest(path: str | Path) -> PlaylistManifest:
+    """Read and strictly validate a YAML playlist manifest."""
+    source = Path(path)
+    try:
+        data = yaml.safe_load(source.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise ManifestError(f"Could not parse YAML manifest {source}: {exc}") from exc
+
+    try:
+        return PlaylistManifest.model_validate(data)
+    except ValidationError as exc:
+        detail = exc.errors()[0].get("msg", "invalid manifest")
+        raise ManifestError(f"Invalid playlist manifest {source}: {detail}") from exc

@@ -36,6 +36,31 @@ def test_playlist_create_dry_run(tmp_path: Path) -> None:
     assert "spotify:track:354WZaV3u6cuzTG2PmpYwm" in result.output
 
 
+def test_playlist_create_from_manifest_dry_run(tmp_path: Path) -> None:
+    source = tmp_path / "playlist.yaml"
+    source.write_text(
+        """
+        name: Manifest playlist
+        tracks:
+          - title: First
+            artist: Artist
+            uri: spotify:track:354WZaV3u6cuzTG2PmpYwm
+          - title: Missing
+            artist: Artist
+            missing: true
+        """,
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        ["playlist", "create", "--manifest", str(source), "--dry-run"],
+    )
+
+    assert result.exit_code == 0
+    assert "1 tracks validated" in result.output
+
+
 def test_search_track_json(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_search_tracks(query: str, *, limit: int, market: str | None) -> list[TrackSummary]:
         assert query == 'track:"Get The Message"'
