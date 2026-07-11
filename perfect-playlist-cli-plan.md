@@ -1340,3 +1340,6 @@ def playlist_create(
   verification passes with the opt-in integration test skipped.
 - The opt-in Spotify integration test still requires local credentials and was
   intentionally not run against the external API.
+- 2026-07-10: Playlist export is complete. `export_playlist_to_file()` writes
+  the existing playlist's track URIs in Spotify order, and the CLI supports
+  `playlist export PLAYLIST_ID --out FILE`.

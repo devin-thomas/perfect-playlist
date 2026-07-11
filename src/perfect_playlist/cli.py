@@ -16,7 +16,7 @@ from .models import TrackSummary
 from .playlist import add_items_in_order, create_playlist_from_uris
 from .search import get_tracks, search_tracks
 from .track_refs import normalize_track_ref
-from .verify import verify_playlist_prefix
+from .verify import export_playlist_to_file, verify_playlist_prefix
 
 app = typer.Typer(help="Create Spotify playlists from exact track URIs.")
 auth_app = typer.Typer(help="Authenticate with Spotify.")
@@ -179,6 +179,21 @@ def playlist_verify(
         raise typer.Exit(5) from exc
 
     console.print(f"Verification passed for {len(uris)} tracks.")
+
+
+@playlist_app.command("export")
+def playlist_export(
+    playlist_id: str,
+    output_file: Annotated[Path, typer.Option("--out", dir_okay=False)],
+) -> None:
+    """Export an existing playlist's track URIs in playlist order."""
+    try:
+        uris = export_playlist_to_file(playlist_id, output_file)
+    except SpotifyExactError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(5) from exc
+
+    console.print(f"Exported {len(uris)} tracks to {output_file}.")
 
 
 @search_app.command("track")

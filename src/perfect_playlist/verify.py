@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from pathlib import Path
 
 from .client import SPOTIFY_API_EXCEPTIONS, PlaylistClient, get_spotify_client
 from .errors import PlaylistVerificationError
@@ -68,3 +69,15 @@ def verify_playlist_prefix(
             )
 
     return True
+
+
+def export_playlist_to_file(
+    playlist_id: str,
+    path: str | Path,
+    *,
+    client: PlaylistClient | None = None,
+) -> list[str]:
+    """Export playlist track URIs in Spotify order to a UTF-8 text file."""
+    uris = get_playlist_track_uris(playlist_id, client=client)
+    Path(path).write_text("\n".join(uris) + ("\n" if uris else ""), encoding="utf-8")
+    return uris

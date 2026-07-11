@@ -173,7 +173,13 @@ Implemented:
 Still planned:
 
 - a credentialed run of the opt-in Spotify integration test
-- playlist export, repair, and resolve workflows
+- playlist repair and resolve workflows
+
+Export an existing playlist to an exact URI file:
+
+```powershell
+perfect-playlist playlist export PLAYLIST_ID --out playlist.txt
+```
 
 ## Determinism Policy
 

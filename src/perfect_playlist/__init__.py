@@ -18,7 +18,7 @@ from .playlist import (
 )
 from .search import get_tracks, search_tracks
 from .track_refs import extract_track_id, is_track_uri, normalize_track_ref
-from .verify import verify_playlist_prefix
+from .verify import export_playlist_to_file, verify_playlist_prefix
 
 __all__ = [
     "CreatedPlaylist",
@@ -33,6 +33,7 @@ __all__ = [
     "create_playlist_from_file",
     "create_playlist_from_uris",
     "extract_track_id",
+    "export_playlist_to_file",
     "get_tracks",
     "is_track_uri",
     "normalize_track_ref",
