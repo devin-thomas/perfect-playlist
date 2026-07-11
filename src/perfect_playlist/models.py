@@ -56,6 +56,7 @@ class PlaylistManifestTrack(BaseModel):
     uri: str | None = None
     missing: bool = False
     needs_review: bool = False
+    confidence: float = 0.0
     candidate_uris: list[str] = Field(default_factory=list)
     note: str | None = None
 

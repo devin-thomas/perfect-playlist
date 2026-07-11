@@ -59,8 +59,10 @@ def test_resolve_selects_one_exact_match_and_marks_ambiguous_tracks(tmp_path: Pa
 
     assert manifest.tracks[0].uri == TRACK_A
     assert manifest.tracks[0].needs_review is False
+    assert manifest.tracks[0].confidence == 1.0
     assert manifest.tracks[1].needs_review is True
     assert manifest.tracks[1].uri is None
+    assert manifest.tracks[1].confidence == 1.0
     assert manifest.tracks[1].candidate_uris == [TRACK_A, TRACK_B]
     assert manifest.uris == [TRACK_A]
     assert "needs_review: true" in output.read_text(encoding="utf-8")

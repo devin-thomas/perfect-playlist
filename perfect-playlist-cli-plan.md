@@ -1350,3 +1350,6 @@ def playlist_create(
   writing to Spotify and emits a manifest with exact matches plus
   `needs_review: true` candidate entries; the CLI supports
   `resolve setlist INPUT --out OUTPUT`.
+- 2026-07-10: Resolve review tooling now records a `0.0`-to-`1.0` confidence
+  score for each candidate set while keeping ambiguous matches behind the
+  `needs_review` gate.

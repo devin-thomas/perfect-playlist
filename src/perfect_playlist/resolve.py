@@ -20,6 +20,17 @@ def _artist_matches(requested: str, artists: list[str]) -> bool:
     return any(requested_folded == _fold(artist) for artist in artists)
 
 
+def _confidence(
+    title: str, artist: str, candidate_title: str, candidate_artists: list[str]
+) -> float:
+    score = 0.0
+    if _fold(candidate_title) == _fold(title):
+        score += 0.5
+    if _artist_matches(artist, candidate_artists):
+        score += 0.5
+    return score
+
+
 def resolve_setlist(
     source: str | Path,
     output: str | Path,
@@ -43,18 +54,22 @@ def resolve_setlist(
     for track in setlist.tracks:
         query = f'track:"{track.title}" artist:"{track.artist}"'
         candidates = search_tracks(query, limit=5, market=market, client=client)
-        exact = [
-            candidate
+        scored = [
+            (
+                candidate,
+                _confidence(track.title, track.artist, candidate.title, candidate.artists),
+            )
             for candidate in candidates
-            if _fold(candidate.title) == _fold(track.title)
-            and _artist_matches(track.artist, candidate.artists)
         ]
-        selected = exact[0] if len(exact) == 1 else None
+        high_confidence = [candidate for candidate, score in scored if score == 1.0]
+        selected = high_confidence[0] if len(high_confidence) == 1 else None
+        confidence = max((score for _, score in scored), default=0.0)
         resolved: dict[str, object] = {
             "title": track.title,
             "artist": track.artist,
             "needs_review": selected is None,
-            "candidate_uris": [candidate.uri for candidate in (exact or candidates)],
+            "confidence": confidence,
+            "candidate_uris": [candidate.uri for candidate, _ in scored],
         }
         if selected is not None:
             resolved["uri"] = selected.uri
