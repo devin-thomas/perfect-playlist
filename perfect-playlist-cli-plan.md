@@ -1346,3 +1346,7 @@ def playlist_create(
 - 2026-07-10: Playlist repair is complete. `repair_playlist()` previews by
   default and applies an exact replacement only with explicit opt-in; the CLI
   supports `playlist repair PLAYLIST_ID --from FILE [--apply]`.
+- 2026-07-10: Resolve mode is complete. `resolve_setlist()` searches without
+  writing to Spotify and emits a manifest with exact matches plus
+  `needs_review: true` candidate entries; the CLI supports
+  `resolve setlist INPUT --out OUTPUT`.

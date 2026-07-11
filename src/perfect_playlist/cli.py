@@ -15,6 +15,7 @@ from .io import read_manifest, read_uri_lines
 from .models import TrackSummary
 from .playlist import add_items_in_order, create_playlist_from_uris
 from .repair import repair_playlist
+from .resolve import resolve_setlist
 from .search import get_tracks, search_tracks
 from .track_refs import normalize_track_ref
 from .verify import export_playlist_to_file, verify_playlist_prefix
@@ -24,11 +25,13 @@ auth_app = typer.Typer(help="Authenticate with Spotify.")
 playlist_app = typer.Typer(help="Create and verify playlists.")
 search_app = typer.Typer(help="Search Spotify without writing playlists.")
 track_app = typer.Typer(help="Inspect exact Spotify tracks.")
+resolve_app = typer.Typer(help="Resolve human-readable setlists into reviewable manifests.")
 
 app.add_typer(auth_app, name="auth")
 app.add_typer(playlist_app, name="playlist")
 app.add_typer(search_app, name="search")
 app.add_typer(track_app, name="track")
+app.add_typer(resolve_app, name="resolve")
 
 console = Console()
 
@@ -276,6 +279,25 @@ def track_show(
         return
 
     _print_track_table("Track", tracks)
+
+
+@resolve_app.command("setlist")
+def resolve_setlist_command(
+    setlist_file: Path,
+    output_file: Annotated[Path, typer.Option("--out", dir_okay=False)],
+) -> None:
+    """Search a setlist and write a manifest requiring review before creation."""
+    try:
+        manifest = resolve_setlist(setlist_file, output_file)
+    except SpotifyExactError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(4) from exc
+
+    review_count = sum(track.needs_review for track in manifest.tracks)
+    console.print(
+        f"Wrote {len(manifest.tracks)} tracks to {output_file}; "
+        f"{review_count} need review before playlist creation."
+    )
 
 
 if __name__ == "__main__":

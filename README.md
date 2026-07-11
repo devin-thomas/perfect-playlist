@@ -173,7 +173,18 @@ Implemented:
 Still planned:
 
 - a credentialed run of the opt-in Spotify integration test
-- playlist repair and resolve workflows
+- additional resolve confidence and review tooling
+
+Resolve a human-readable setlist into a reviewable manifest:
+
+```powershell
+perfect-playlist resolve setlist setlist.yaml --out resolved.yaml
+```
+
+The resolver only searches Spotify and never writes a playlist. Unique exact
+title/artist matches receive a URI; ambiguous or unmatched entries are marked
+`needs_review: true` with candidate URIs. Review the output before using
+`playlist create --manifest`.
 
 Export an existing playlist to an exact URI file:
 

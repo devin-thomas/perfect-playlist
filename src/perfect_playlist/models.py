@@ -55,14 +55,18 @@ class PlaylistManifestTrack(BaseModel):
     artist: str
     uri: str | None = None
     missing: bool = False
+    needs_review: bool = False
+    candidate_uris: list[str] = Field(default_factory=list)
     note: str | None = None
 
     @model_validator(mode="after")
     def validate_reference(self) -> PlaylistManifestTrack:
         if self.missing and self.uri is not None:
             raise ValueError("cannot include uri when missing: true")
-        if not self.missing and self.uri is None:
-            raise ValueError("must include uri or set missing: true")
+        if not self.missing and not self.needs_review and self.uri is None:
+            raise ValueError(
+                "must include uri or set missing: true (or set needs_review: true)"
+            )
         if self.uri is not None:
             try:
                 self.uri = normalize_track_ref(self.uri)
@@ -82,4 +86,25 @@ class PlaylistManifest(BaseModel):
     @property
     def uris(self) -> list[str]:
         """Return only verified track URIs, preserving manifest order."""
-        return [track.uri for track in self.tracks if track.uri is not None]
+        return [
+            track.uri
+            for track in self.tracks
+            if track.uri is not None and not track.missing and not track.needs_review
+        ]
+
+
+class SetlistInputTrack(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str
+    artist: str
+    note: str | None = None
+
+
+class SetlistInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    public: bool = False
+    description: str = ""
+    tracks: list[SetlistInputTrack]
