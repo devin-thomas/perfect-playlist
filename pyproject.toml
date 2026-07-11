@@ -24,9 +24,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "pytest>=8.0",
-  "ruff>=0.6",
-  "mypy>=1.10",
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.10",
+    "types-PyYAML>=6.0",
 ]
 yaml = [
   "pyyaml>=6.0",
@@ -50,6 +51,7 @@ select = ["E", "F", "I", "UP", "B"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
+cache_dir = ".mypy_cache_local"
 
 [[tool.mypy.overrides]]
 module = ["spotipy", "spotipy.*"]
