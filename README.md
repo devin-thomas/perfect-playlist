@@ -168,12 +168,13 @@ Implemented:
 - read-only track search and track metadata lookup
 - typed Spotify auth and API error handling
 - Rich table output and JSON output for search and track inspection
+- YAML manifest resolution with confidence and review gating
+- Playlist export and opt-in repair workflows
 - mocked unit tests for playlist and search behavior
 
 Still planned:
 
 - a credentialed run of the opt-in Spotify integration test
-- additional resolve confidence and review tooling
 
 Resolve a human-readable setlist into a reviewable manifest:
 
@@ -187,6 +188,13 @@ title/artist matches receive a URI; ambiguous or unmatched entries are marked
 `1.0`. Review the output before using `playlist create --manifest`.
 Playlist creation rejects any manifest entries still marked `needs_review`, so
 unapproved candidates cannot be silently omitted.
+
+Add `--json` to print the resolved manifest for scripts while still writing the
+reviewable YAML file:
+
+```powershell
+perfect-playlist resolve setlist setlist.yaml --out resolved.yaml --json
+```
 
 Export an existing playlist to an exact URI file:
 

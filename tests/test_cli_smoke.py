@@ -4,7 +4,7 @@ import pytest
 from typer.testing import CliRunner
 
 from perfect_playlist.cli import app
-from perfect_playlist.models import TrackSummary
+from perfect_playlist.models import PlaylistManifest, PlaylistManifestTrack, TrackSummary
 
 
 def test_cli_help() -> None:
@@ -83,6 +83,30 @@ def test_playlist_create_rejects_manifest_needing_review(tmp_path: Path) -> None
 
     assert result.exit_code == 2
     assert "1 track(s) still need review" in result.output
+
+
+def test_resolve_setlist_json_output(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    output = tmp_path / "resolved.yaml"
+    manifest = PlaylistManifest(
+        name="Setlist",
+        tracks=[
+            PlaylistManifestTrack(
+                title="First",
+                artist="Artist",
+                uri="spotify:track:354WZaV3u6cuzTG2PmpYwm",
+            )
+        ],
+    )
+    monkeypatch.setattr("perfect_playlist.cli.resolve_setlist", lambda *args: manifest)
+
+    result = CliRunner().invoke(
+        app,
+        ["resolve", "setlist", "setlist.yaml", "--out", str(output), "--json"],
+    )
+
+    assert result.exit_code == 0
+    assert '"name": "Setlist"' in result.output
+    assert '"needs_review": false' in result.output
 
 
 def test_search_track_json(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -290,6 +290,9 @@ def track_show(
 def resolve_setlist_command(
     setlist_file: Path,
     output_file: Annotated[Path, typer.Option("--out", dir_okay=False)],
+    json_output: Annotated[
+        bool, typer.Option("--json", help="Print the resolved manifest as JSON.")
+    ] = False,
 ) -> None:
     """Search a setlist and write a manifest requiring review before creation."""
     try:
@@ -299,10 +302,13 @@ def resolve_setlist_command(
         raise typer.Exit(4) from exc
 
     review_count = sum(track.needs_review for track in manifest.tracks)
-    console.print(
-        f"Wrote {len(manifest.tracks)} tracks to {output_file}; "
-        f"{review_count} need review before playlist creation."
-    )
+    if json_output:
+        console.print(json.dumps(manifest.model_dump(), indent=2))
+    else:
+        console.print(
+            f"Wrote {len(manifest.tracks)} tracks to {output_file}; "
+            f"{review_count} need review before playlist creation."
+        )
 
 
 if __name__ == "__main__":

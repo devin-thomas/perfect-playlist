@@ -1356,3 +1356,5 @@ def playlist_create(
 - 2026-07-10: Manifest creation now rejects unresolved `needs_review` entries
   before dry-run or Spotify write processing, preventing silent partial
   playlists.
+- 2026-07-11: The resolver now supports `--json` output for scriptable review
+  while continuing to write the reviewable YAML manifest.
