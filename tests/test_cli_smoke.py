@@ -61,6 +61,30 @@ def test_playlist_create_from_manifest_dry_run(tmp_path: Path) -> None:
     assert "1 tracks validated" in result.output
 
 
+def test_playlist_create_rejects_manifest_needing_review(tmp_path: Path) -> None:
+    source = tmp_path / "needs-review.yaml"
+    source.write_text(
+        """
+        name: Review first
+        tracks:
+          - title: Ambiguous
+            artist: Artist
+            needs_review: true
+            candidate_uris:
+              - spotify:track:354WZaV3u6cuzTG2PmpYwm
+        """,
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(
+        app,
+        ["playlist", "create", "--manifest", str(source), "--dry-run"],
+    )
+
+    assert result.exit_code == 2
+    assert "1 track(s) still need review" in result.output
+
+
 def test_search_track_json(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_search_tracks(query: str, *, limit: int, market: str | None) -> list[TrackSummary]:
         assert query == 'track:"Get The Message"'

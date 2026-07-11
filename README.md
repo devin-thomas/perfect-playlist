@@ -185,6 +185,8 @@ The resolver only searches Spotify and never writes a playlist. Unique exact
 title/artist matches receive a URI; ambiguous or unmatched entries are marked
 `needs_review: true` with candidate URIs and a confidence score from `0.0` to
 `1.0`. Review the output before using `playlist create --manifest`.
+Playlist creation rejects any manifest entries still marked `needs_review`, so
+unapproved candidates cannot be silently omitted.
 
 Export an existing playlist to an exact URI file:
 

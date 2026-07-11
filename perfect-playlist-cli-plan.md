@@ -1353,3 +1353,6 @@ def playlist_create(
 - 2026-07-10: Resolve review tooling now records a `0.0`-to-`1.0` confidence
   score for each candidate set while keeping ambiguous matches behind the
   `needs_review` gate.
+- 2026-07-10: Manifest creation now rejects unresolved `needs_review` entries
+  before dry-run or Spotify write processing, preventing silent partial
+  playlists.

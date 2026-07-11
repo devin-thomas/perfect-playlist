@@ -117,6 +117,11 @@ def playlist_create(
             if private or public:
                 raise SpotifyExactError("Playlist visibility is defined by the manifest.")
             manifest = read_manifest(manifest_file)
+            pending_review = sum(track.needs_review for track in manifest.tracks)
+            if pending_review:
+                raise SpotifyExactError(
+                    f"{pending_review} track(s) still need review before playlist creation."
+                )
             name = manifest.name
             public = manifest.public
             description = manifest.description
