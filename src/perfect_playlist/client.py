@@ -39,6 +39,12 @@ class PlaylistClient(Protocol):
         offset: int,
     ) -> dict[str, Any]: ...
 
+    def playlist_replace_all_items(
+        self,
+        playlist_id: str,
+        items: Sequence[str],
+    ) -> dict[str, Any]: ...
+
 
 class TrackLookupClient(Protocol):
     def search(

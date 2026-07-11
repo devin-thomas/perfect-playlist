@@ -18,6 +18,10 @@ class PlaylistVerificationError(SpotifyExactError):
     """Raised when playlist order does not match the expected URI order."""
 
 
+class PlaylistRepairError(SpotifyExactError):
+    """Raised when a playlist repair cannot be planned or applied."""
+
+
 class AuthConfigError(SpotifyExactError):
     """Raised when Spotify auth configuration is missing or invalid."""
 

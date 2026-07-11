@@ -14,6 +14,7 @@ from .errors import SpotifyExactError
 from .io import read_manifest, read_uri_lines
 from .models import TrackSummary
 from .playlist import add_items_in_order, create_playlist_from_uris
+from .repair import repair_playlist
 from .search import get_tracks, search_tracks
 from .track_refs import normalize_track_ref
 from .verify import export_playlist_to_file, verify_playlist_prefix
@@ -194,6 +195,37 @@ def playlist_export(
         raise typer.Exit(5) from exc
 
     console.print(f"Exported {len(uris)} tracks to {output_file}.")
+
+
+@playlist_app.command("repair")
+def playlist_repair(
+    playlist_id: str,
+    from_file: Annotated[Path, InputFileOption],
+    apply: Annotated[
+        bool,
+        typer.Option("--apply", help="Apply the replacement; otherwise only preview it."),
+    ] = False,
+) -> None:
+    """Preview or apply an exact replacement of playlist track order."""
+    try:
+        result = repair_playlist(
+            playlist_id,
+            read_uri_lines(from_file),
+            dry_run=not apply,
+        )
+    except SpotifyExactError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(5) from exc
+
+    if not result.changed:
+        console.print("Playlist already matches the requested track order.")
+    elif result.applied:
+        console.print(f"Repaired playlist {playlist_id}.")
+    else:
+        console.print(
+            f"Repair preview: {len(result.actual_uris)} existing tracks would be replaced "
+            f"with {len(result.expected_uris)} requested tracks."
+        )
 
 
 @search_app.command("track")

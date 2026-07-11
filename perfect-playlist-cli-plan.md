@@ -1343,3 +1343,6 @@ def playlist_create(
 - 2026-07-10: Playlist export is complete. `export_playlist_to_file()` writes
   the existing playlist's track URIs in Spotify order, and the CLI supports
   `playlist export PLAYLIST_ID --out FILE`.
+- 2026-07-10: Playlist repair is complete. `repair_playlist()` previews by
+  default and applies an exact replacement only with explicit opt-in; the CLI
+  supports `playlist repair PLAYLIST_ID --from FILE [--apply]`.

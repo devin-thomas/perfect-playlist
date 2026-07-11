@@ -181,6 +181,18 @@ Export an existing playlist to an exact URI file:
 perfect-playlist playlist export PLAYLIST_ID --out playlist.txt
 ```
 
+Preview a playlist repair before changing Spotify:
+
+```powershell
+perfect-playlist playlist repair PLAYLIST_ID --from tracks.txt
+```
+
+Apply the exact replacement only after reviewing the preview:
+
+```powershell
+perfect-playlist playlist repair PLAYLIST_ID --from tracks.txt --apply
+```
+
 ## Determinism Policy
 
 The playlist creation path accepts only Spotify track URIs and Spotify track URLs. Human-readable strings such as `Song Title by Artist` are rejected because resolving them would require search and manual review.

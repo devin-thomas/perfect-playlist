@@ -39,6 +39,15 @@ class PlaylistCreateResult(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class PlaylistRepairResult(BaseModel):
+    playlist_id: str
+    expected_uris: list[str]
+    actual_uris: list[str]
+    changed: bool
+    applied: bool
+    snapshot_id: str | None = None
+
+
 class PlaylistManifestTrack(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

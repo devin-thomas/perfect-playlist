@@ -6,6 +6,7 @@ from .models import (
     PlaylistCreateResult,
     PlaylistManifest,
     PlaylistManifestTrack,
+    PlaylistRepairResult,
     TrackRef,
     TrackSummary,
 )
@@ -16,6 +17,7 @@ from .playlist import (
     create_playlist_from_file,
     create_playlist_from_uris,
 )
+from .repair import repair_playlist
 from .search import get_tracks, search_tracks
 from .track_refs import extract_track_id, is_track_uri, normalize_track_ref
 from .verify import export_playlist_to_file, verify_playlist_prefix
@@ -25,6 +27,7 @@ __all__ = [
     "PlaylistCreateResult",
     "PlaylistManifest",
     "PlaylistManifestTrack",
+    "PlaylistRepairResult",
     "TrackRef",
     "TrackSummary",
     "add_items_in_order",
@@ -39,6 +42,7 @@ __all__ = [
     "normalize_track_ref",
     "read_manifest",
     "read_uri_lines",
+    "repair_playlist",
     "search_tracks",
     "verify_playlist_prefix",
 ]
