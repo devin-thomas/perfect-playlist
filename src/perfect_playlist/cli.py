@@ -97,7 +97,13 @@ def playlist_create(
     name: str = typer.Argument("", help="Playlist name; omitted when using --manifest."),
     from_file: Annotated[Path | None, InputFileOption] = None,
     manifest_file: Annotated[Path | None, ManifestFileOption] = None,
-    private: Annotated[bool, typer.Option("--private", help="Create a private playlist.")] = False,
+    private: Annotated[
+        bool,
+        typer.Option(
+            "--private",
+            help="Request removal from profile/search and abort if Spotify persists it public.",
+        ),
+    ] = False,
     public: Annotated[bool, typer.Option("--public", help="Create a public playlist.")] = False,
     dry_run: Annotated[bool, typer.Option("--dry-run", help="Validate without writing.")] = False,
     verify: Annotated[bool, typer.Option("--verify/--no-verify")] = True,

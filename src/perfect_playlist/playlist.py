@@ -35,14 +35,21 @@ def create_empty_playlist(
     sp = client or get_spotify_client()
 
     try:
-        user = sp.current_user()
-        playlist = sp.user_playlist_create(
-            user=user["id"],
+        playlist = sp.current_user_playlist_create(
             name=name,
             public=public,
-            description=description,
             collaborative=collaborative,
+            description=description,
         )
+        if not public:
+            persisted = sp.playlist(playlist["id"], fields="public")
+            if persisted.get("public") is not False:
+                raise PlaylistCreateError(
+                    "Spotify stored playlist as public after private creation was requested. "
+                    "No tracks were added. Make the empty playlist private in a Spotify "
+                    "client before adding tracks: "
+                    f"{playlist['external_urls']['spotify']}"
+                )
     except SPOTIFY_API_EXCEPTIONS as exc:
         raise PlaylistCreateError(f"Spotify rejected playlist creation for {name!r}.") from exc
 

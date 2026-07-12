@@ -1,26 +1,54 @@
-# perfect-playlist
+# Perfect Playlist
 
-Deterministic Spotify playlist creation from exact track URIs.
+Build the Spotify playlist you chose, exactly as you chose it.
 
-`perfect-playlist` is a local CLI and importable Python package for creating Spotify playlists from an ordered list of exact Spotify track URIs or track URLs. It does not search, substitute, reorder, or silently skip tracks during playlist creation.
+Perfect Playlist is a local CLI and importable Python package for turning an ordered set of exact Spotify track references into an exact playlist. It preserves order and duplicates, validates before writing, and verifies what Spotify stored afterward.
+
+## Vision
+
+AI should be able to build a deterministic playlist without outsourcing the final decision to another generative system. Perfect Playlist is intended to become that dependable final-mile primitive for both people and AI agents.
+
+## Mission
+
+Provide the smallest safe interface that can discover Spotify tracks, inspect exact candidates, preserve a chosen TrackSequence, and build or compare playlists without substitution, hidden reordering, silent skips, or destructive overwrites.
 
 ## Why This Exists
 
-Spotify playlist generation tools often optimize for recommendations or fuzzy matching. This project optimizes for repeatability:
+The idea came from trying to create deterministic playlists through ChatGPT's Spotify integration. Asking ChatGPT to ask Spotify to "generate" a playlist passes the intent through multiple interpretive layers. It is like playing a game of Telephone with AI: the request may sound similar at the other end, but the exact tracks and order are no longer guaranteed.
 
-- input order is preserved
-- duplicate tracks are allowed
-- invalid lines fail before Spotify write operations
-- add operations are chunked in Spotify's 100-item batches
-- fuzzy search is kept separate from deterministic playlist writes
+Perfect Playlist removes that last interpretive handoff. An AI agent can search, inspect, and deliberately select exact Spotify track references, then hand the resulting TrackSequence to a deterministic build command. Discovery can be intelligent; the final write should be exact.
+
+This project is not trying to replace recommendation systems. It provides the reliable mechanism that builds a playlist after the choices have already been made.
+
+## Product Direction
+
+- `build` is the primary action and creates a new public playlist by default.
+- A public or private playlist can be built by supplying an owned, empty target.
+- `add` is a secondary, append-only action and never changes visibility.
+- `verify` compares any two Sources as exact ordered TrackSequences.
+- `export` creates durable YAML, JSON, text, or link output without overwriting files.
+- `search` and `inspect` expose facts without choosing tracks or writing playlists.
+- Repair and natural-language resolve workflows are removed from the next interface.
+
+The approved next CLI is specified in [the CLI contract](docs/CLI-CONTRACT.md). The repository still contains portions of the earlier grouped command implementation while that contract is being implemented; do not treat the new command examples as shipped until the implementation plan and checks are complete.
+
+## Documentation
+
+- [Product vision and ubiquitous language](docs/PRODUCT-AND-LANGUAGE.md)
+- [Authoritative CLI contract](docs/CLI-CONTRACT.md)
+- [Reconciled implementation plan](docs/IMPLEMENTATION-PLAN.md)
+- [Live Spotify QA evidence and handoff](docs/LIVE-QA.md)
+- [LinkedIn progress-post draft](docs/LINKEDIN-DRAFT.md)
+
+Start with [the documentation index](docs/README.md) when implementing or reviewing the project.
 
 ## Requirements
 
 - Python 3.11+
 - A Spotify developer app
-- A redirect URI using a loopback IP literal, for example `http://127.0.0.1:8888/callback`
+- A registered loopback redirect URI such as `http://127.0.0.1:8888/callback`
 
-## Setup
+## Development Setup
 
 ```powershell
 py -m venv .venv
@@ -29,7 +57,7 @@ python -m pip install -e ".[dev,yaml]"
 Copy-Item .env.example .env
 ```
 
-Edit `.env` with your Spotify app credentials:
+Populate the local, gitignored `.env`:
 
 ```env
 SPOTIPY_CLIENT_ID=your_client_id_here
@@ -37,183 +65,35 @@ SPOTIPY_CLIENT_SECRET=your_client_secret_here
 SPOTIPY_REDIRECT_URI=http://127.0.0.1:8888/callback
 ```
 
-## Fast Path
+The package already loads this file with `python-dotenv`. Project maintainers also have a private credential note at `C:\dev\personal\spotify-playlist-modify\resources\secrets.md`; it stays gitignored and must never be committed. Copy values into `.env` locally rather than changing code to parse the Markdown file.
 
-Create a text file containing one exact track URI or Spotify track URL per line:
-
-```text
-# The Paradox Tiny Desk - verified available tracks
-spotify:track:354WZaV3u6cuzTG2PmpYwm
-spotify:track:78APbsosmvDYIwZHjzC5ZE
-spotify:track:1OAMZ1AV5y6DHI5kzP0L3V
-spotify:track:6FVeZfWkYtDiyyq93dBSXU
-spotify:track:1y6lq1wrAspWEgRJmYb11S
-```
-
-Dry run first:
+Register the exact redirect URI in Spotify's developer dashboard, then authorize once:
 
 ```powershell
-perfect-playlist playlist create "The Paradox Tiny Desk - Available Tracks" --private --from examples/paradox-tiny-desk.txt --dry-run
+perfect-playlist auth login
 ```
 
-Create the playlist:
+OAuth tokens are stored outside the repository in the operating-system user cache.
 
-```powershell
-perfect-playlist playlist create "The Paradox Tiny Desk - Available Tracks" --private --from examples/paradox-tiny-desk.txt --verify
-```
+## Current Validation
 
-Create from a strict YAML manifest:
-
-```powershell
-perfect-playlist playlist create --manifest examples/paradox-tiny-desk.yaml --dry-run
-```
-
-Manifest entries must contain an exact Spotify track URI or URL. Entries marked
-`missing: true` are excluded from the write while preserving the order of all
-verified tracks; any other entry without a URI fails validation.
-
-## CLI Shape
-
-```text
-perfect-playlist
-  auth
-    login
-    status
-  search
-    track QUERY
-  track
-    show URI_OR_URL
-  playlist
-    create NAME --from FILE [--private/--public] [--dry-run] [--verify]
-    add PLAYLIST_ID --from FILE [--position N]
-    verify PLAYLIST_ID --from FILE
-```
-
-`playlist create`, `playlist add`, `playlist verify`, `search track`, and `track show` are implemented. Spotify write operations still require valid credentials and a configured Spotify developer app.
-
-## Library Usage
-
-```python
-from perfect_playlist import create_playlist_from_uris
-
-result = create_playlist_from_uris(
-    name="My Exact Playlist",
-    uris=[
-        "spotify:track:354WZaV3u6cuzTG2PmpYwm",
-        "https://open.spotify.com/track/78APbsosmvDYIwZHjzC5ZE?si=abc123",
-    ],
-    public=False,
-    dry_run=True,
-)
-
-print(result.added_uris)
-```
-
-## Project Structure
-
-```text
-src/perfect_playlist/
-  auth.py         OAuth manager setup
-  client.py       Spotify client factory
-  cli.py          Thin Typer CLI
-  config.py       Environment and cache path helpers
-  errors.py       Package exceptions
-  io.py           Input file parsing
-  models.py       Pydantic models
-  playlist.py     Deterministic playlist operations
-  search.py       Track search and metadata lookup
-  track_refs.py   URI and URL normalization
-  verify.py       Playlist order verification
-tests/
-examples/
-```
-
-## Development
+Offline checks:
 
 ```powershell
 python -m pytest
-python -m ruff check .
+python -m ruff check --no-cache src tests
 python -m mypy src
 ```
 
-Spotify integration tests should stay opt-in and only run when `PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS=1` is set.
-
-## Spotify Integration Validation
-
-The default test suite does not contact Spotify. To run the real integration check, configure a local `.env` with:
-
-```env
-SPOTIPY_CLIENT_ID=your_client_id_here
-SPOTIPY_CLIENT_SECRET=your_client_secret_here
-SPOTIPY_REDIRECT_URI=http://127.0.0.1:8888/callback
-```
-
-Then run:
+The live Spotify test is deliberately opt-in:
 
 ```powershell
 $env:PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS="1"
 python -m pytest tests/integration
 ```
 
-The integration test creates a private playlist named `perfect-playlist integration test - DELETE ME - <timestamp>` and verifies that the Spotify track order matches `examples/paradox-tiny-desk.txt`.
-
-## Current Status
-
-Implemented:
-
-- deterministic input normalization for Spotify track URIs and track URLs
-- ordered playlist creation and add operations with 100-item chunking
-- validation before playlist writes
-- playlist prefix verification
-- read-only track search and track metadata lookup
-- typed Spotify auth and API error handling
-- Rich table output and JSON output for search and track inspection
-- YAML manifest resolution with confidence and review gating
-- Playlist export and opt-in repair workflows
-- mocked unit tests for playlist and search behavior
-
-Still planned:
-
-- a credentialed run of the opt-in Spotify integration test
-
-Resolve a human-readable setlist into a reviewable manifest:
-
-```powershell
-perfect-playlist resolve setlist setlist.yaml --out resolved.yaml
-```
-
-The resolver only searches Spotify and never writes a playlist. Unique exact
-title/artist matches receive a URI; ambiguous or unmatched entries are marked
-`needs_review: true` with candidate URIs and a confidence score from `0.0` to
-`1.0`. Review the output before using `playlist create --manifest`.
-Playlist creation rejects any manifest entries still marked `needs_review`, so
-unapproved candidates cannot be silently omitted.
-
-Add `--json` to print the resolved manifest for scripts while still writing the
-reviewable YAML file:
-
-```powershell
-perfect-playlist resolve setlist setlist.yaml --out resolved.yaml --json
-```
-
-Export an existing playlist to an exact URI file:
-
-```powershell
-perfect-playlist playlist export PLAYLIST_ID --out playlist.txt
-```
-
-Preview a playlist repair before changing Spotify:
-
-```powershell
-perfect-playlist playlist repair PLAYLIST_ID --from tracks.txt
-```
-
-Apply the exact replacement only after reviewing the preview:
-
-```powershell
-perfect-playlist playlist repair PLAYLIST_ID --from tracks.txt --apply
-```
+The latest credentialed run proved public creation and exact ordered writes, but Spotify did not persist a requested private state during API creation. The package now fails closed before adding tracks. The approved private flow therefore fills an empty private playlist that the user already owns instead of claiming that the API can create one reliably. See [live QA evidence](docs/LIVE-QA.md).
 
 ## Determinism Policy
 
-The playlist creation path accepts only Spotify track URIs and Spotify track URLs. Human-readable strings such as `Song Title by Artist` are rejected because resolving them would require search and manual review.
+Write operations accept only Sources that resolve to exact Spotify track URIs. Human-readable song requests belong in an agent's discovery workflow, where Search and Inspect can be used deliberately. They are never silently resolved inside Build or Add.

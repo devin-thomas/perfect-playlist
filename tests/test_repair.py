@@ -21,7 +21,7 @@ class RepairClient:
         page = self.actual[offset : offset + limit]
         return {"items": [{"track": {"uri": uri}} for uri in page], "next": None}
 
-    def playlist_replace_all_items(
+    def playlist_replace_items(
         self, playlist_id: str, items: Sequence[str]
     ) -> dict[str, str]:
         self.replacements.append((playlist_id, list(items)))

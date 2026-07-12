@@ -13,25 +13,25 @@ def _track_uri(index: int) -> str:
 
 
 class PlaylistClient:
-    def __init__(self, playlist_items: list[str] | None = None) -> None:
+    def __init__(
+        self,
+        playlist_items: list[str] | None = None,
+        persisted_public: bool | None = None,
+    ) -> None:
         self.created: list[dict[str, object]] = []
         self.added: list[dict[str, object]] = []
         self._playlist_items = playlist_items or []
+        self._persisted_public = persisted_public
 
-    def current_user(self) -> dict[str, object]:
-        return {"id": "user-123"}
-
-    def user_playlist_create(
+    def current_user_playlist_create(
         self,
-        user: str,
         name: str,
         public: bool,
-        description: str,
         collaborative: bool = False,
+        description: str = "",
     ) -> dict[str, object]:
         self.created.append(
             {
-                "user": user,
                 "name": name,
                 "public": public,
                 "description": description,
@@ -43,6 +43,15 @@ class PlaylistClient:
             "uri": "spotify:playlist:playlist-123",
             "external_urls": {"spotify": "https://open.spotify.com/playlist/playlist-123"},
             "name": name,
+        }
+
+    def playlist(self, playlist_id: str, fields: str) -> dict[str, object]:
+        requested_public = self.created[-1]["public"]
+        return {
+            "id": playlist_id,
+            "public": (
+                requested_public if self._persisted_public is None else self._persisted_public
+            ),
         }
 
     def playlist_add_items(
@@ -69,8 +78,14 @@ class PlaylistClient:
         }
 
 
-class FailingCurrentUserClient(PlaylistClient):
-    def current_user(self) -> dict[str, object]:
+class FailingCreateClient(PlaylistClient):
+    def current_user_playlist_create(
+        self,
+        name: str,
+        public: bool,
+        collaborative: bool = False,
+        description: str = "",
+    ) -> dict[str, object]:
         raise SpotifyException(401, -1, "unauthorized")
 
 
@@ -110,6 +125,21 @@ def test_create_playlist_adds_and_verifies_exact_order() -> None:
     ]
 
 
+def test_private_playlist_aborts_before_adding_when_spotify_persists_it_as_public() -> None:
+    client = PlaylistClient(persisted_public=True)
+
+    with pytest.raises(PlaylistCreateError, match="stored playlist as public"):
+        create_playlist_from_uris(
+            "Must stay private",
+            [_track_uri(1)],
+            public=False,
+            verify=False,
+            client=client,
+        )
+
+    assert client.added == []
+
+
 def test_add_items_in_order_chunks_sequentially_and_positions_first_chunk_only() -> None:
     uris = [_track_uri(index) for index in range(101)]
     client = PlaylistClient()
@@ -131,7 +161,7 @@ def test_add_items_in_order_chunks_sequentially_and_positions_first_chunk_only()
 
 def test_create_playlist_maps_spotify_create_failure() -> None:
     with pytest.raises(PlaylistCreateError, match="Spotify rejected playlist creation"):
-        create_playlist_from_uris("Exact", [_track_uri(1)], client=FailingCurrentUserClient())
+        create_playlist_from_uris("Exact", [_track_uri(1)], client=FailingCreateClient())
 
 
 def test_add_items_reports_chunk_and_partial_playlist_url() -> None:

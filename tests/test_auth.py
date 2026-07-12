@@ -22,3 +22,17 @@ def test_build_auth_manager_reports_missing_env_without_values(
     assert "SPOTIPY_CLIENT_SECRET" in message
     assert "SPOTIPY_REDIRECT_URI" in message
     assert "=" not in message
+
+
+def test_build_auth_manager_creates_token_cache_parent(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("SPOTIPY_CLIENT_ID", "client-id")
+    monkeypatch.setenv("SPOTIPY_CLIENT_SECRET", "client-secret")
+    monkeypatch.setenv("SPOTIPY_REDIRECT_URI", "http://127.0.0.1:4202")
+    cache_path = tmp_path / "missing" / "token-cache.json"
+
+    build_auth_manager(cache_path=str(cache_path), open_browser=False)
+
+    assert cache_path.parent.is_dir()

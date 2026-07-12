@@ -40,7 +40,7 @@ def repair_playlist(
 
     sp = client or get_spotify_client()
     try:
-        response = sp.playlist_replace_all_items(playlist_id, expected)
+        response = sp.playlist_replace_items(playlist_id, expected)
     except SPOTIFY_API_EXCEPTIONS as exc:
         raise PlaylistRepairError(
             f"Spotify rejected repair for playlist {playlist_id}."

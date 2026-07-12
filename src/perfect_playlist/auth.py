@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
+from spotipy.cache_handler import CacheFileHandler
 from spotipy.oauth2 import SpotifyOAuth
 
 from .config import default_token_cache_path
@@ -38,8 +40,11 @@ def build_auth_manager(
         names = ", ".join(missing)
         raise AuthConfigError(f"Spotify auth configuration is missing: {names}.")
 
+    token_cache_path = Path(cache_path).expanduser() if cache_path else default_token_cache_path()
+    token_cache_path.parent.mkdir(parents=True, exist_ok=True)
+
     return SpotifyOAuth(
         scope=scope or DEFAULT_SCOPES,
-        cache_path=cache_path or str(default_token_cache_path()),
+        cache_handler=CacheFileHandler(cache_path=str(token_cache_path)),
         open_browser=open_browser,
     )
