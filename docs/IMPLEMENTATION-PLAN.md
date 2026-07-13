@@ -41,7 +41,7 @@ Every task owner must:
 2. Log and report the total whole minutes worked.
 3. Mark the task complete only when its acceptance criteria are done and all applicable checks and tests pass.
 4. If any test fails or is skipped, report that **boldly and clearly**, explain why, and do not represent the task as fully verified. Prefer resolving failures and eliminating unintended skips before handoff.
-5. Credentials live only in gitignored `resources/spotify-secrets.env`. Never read, display, log, modify, commit, paste into Linear, or duplicate its contents. Use `spotify-secrets.env.example` only to understand variable names.
+5. Credentials live only in gitignored `resources/spotify-secrets.env`. Approved runtime and test code may load it, but agents never directly open, print, inspect, modify, commit, paste into Linear, or duplicate its contents. Use `spotify-secrets.env.example` only to understand variable names.
 
 ## Parent 1 of 3 - Establish the Canonical Core and CLI Shell
 

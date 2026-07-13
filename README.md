@@ -67,6 +67,7 @@ SPOTIFY_REFRESH_TOKEN=your_refresh_token_here
 SPOTIFY_ACCOUNT_ID=your_account_id_here
 SPOTIFY_USER_ID=your_user_id_here
 LINEAR_API_KEY=your_linear_api_key_here
+PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS=0
 ```
 
 The package loads this file directly with `python-dotenv`. Ralph uses `LINEAR_API_KEY` only during host-side Docker proxy-secret registration; the implementation agent receives a placeholder and must never read or expose the file. The safe committed shape is `spotify-secrets.env.example`. The real file, its values, OAuth material, and token caches must never be committed.
@@ -89,11 +90,13 @@ python -m ruff check --no-cache src tests
 python -m mypy src
 ```
 
-The live Spotify test is deliberately opt-in:
+The live Spotify test is controlled by `resources/spotify-secrets.env`. Set
+`PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS=1` to include a temporary public
+create/verify/unfollow cycle in every full pytest run. Leave it at `0` to keep
+live writes opt-in.
 
 ```powershell
-$env:PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS="1"
-python -m pytest tests/integration
+python -m pytest
 ```
 
 The latest credentialed run proved public creation and exact ordered writes, but Spotify did not persist a requested private state during API creation. The package now fails closed before adding tracks. The approved private flow therefore fills an empty private playlist that the user already owns instead of claiming that the API can create one reliably. See [live QA evidence](docs/LIVE-QA.md).

@@ -13,6 +13,16 @@ This document preserves historical live-test evidence. Legacy command names
 and features mentioned in the chronology describe the implementation at the
 time of testing and are not requirements for the next CLI.
 
+## Current Always-On Baseline
+
+On 2026-07-12, the local secrets file set
+`PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS=1`. The full suite reported `41 passed`
+with no skip: the live test created a temporary public playlist, added the
+ordered example tracks, verified the result, confirmed persisted public
+visibility, and unfollowed the fixture during cleanup. Repository-local pytest
+temp paths prevent host/sandbox permission differences from blocking unrelated
+tests.
+
 ## Historical Objective and Spotify Privacy Persistence Blocker
 
 Run a real Spotify integration test using these tracks, preserving order and

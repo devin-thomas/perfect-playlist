@@ -69,7 +69,7 @@ This document records the interview that defined the Perfect Playlist Ralph runn
 ## MCP, secrets, and branch initialization
 
 21. **How does Codex currently access Linear?**  
-    **Answer: D.** The screenshots showed the Linear App plus a directly configured Linear MCP connection. Docker receives an explicit project-scoped MCP configuration.
+    **Answer: D, implementation refined.** Codex Desktop uses its global OAuth Linear connection. Ralph injects an explicit bearer-token Linear MCP configuration only into Docker Codex invocations, avoiding a project TOML override that would break Desktop when `LINEAR_API_KEY` is absent.
 
 22. **How should Git pushes authenticate?**  
     **Answer: A/D.** Prefer the host's SSH setup; use the existing host credential mechanism if SSH is not practical. Git push happens outside Docker.

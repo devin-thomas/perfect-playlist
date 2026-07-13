@@ -6,12 +6,13 @@ Complete exactly one next task from the Perfect Playlist implementation plan.
 Repository: current repository root (expected local path: C:\dev\personal\spotify-playlist-modify)
 Spotify secrets file: resources/spotify-secrets.env
 Linear project: Perfect Playlist CLI
+Linear access: use the configured OAuth server named `linear`; do not require or retrieve `LINEAR_API_KEY` in Codex Desktop.
 Ordered parent issues: M-115, M-116, M-117
 Independent final review: M-27
 
 Do not ask me for a task ID. Determine the one next executable implementation child from Linear as described below, complete only that task, report it, and stop.
 
-M-27 is never selectable in this workflow. Ralph is not authorized to perform, modify, or complete the independent final review. If every implementation child under M-115, M-116, and M-117 is Done and M-27 is the only remaining work, make no repository or Linear changes, report `Status: Review Required`, and stop.
+M-27 is never selectable in this implementation workflow. If every implementation child under M-115, M-116, and M-117 is Done and M-27 is the only remaining work, make no repository or Linear changes, report `Status: Review Required`, and stop.
 
 Before changing anything:
 
@@ -27,6 +28,7 @@ Before changing anything:
 4. Inspect git status. The worktree may contain intentional changes from earlier tasks. Preserve them, do not revert them, and do not overwrite unrelated work.
 5. Use Linear to read M-115, M-116, M-117, M-27, and all children of the three parent issues, including each issue's status and blockers.
 6. Retry a transient Linear read or write failure up to three total attempts with a short delay. If Linear remains unavailable, do not guess or claim completion.
+7. If the OAuth Linear server requires authentication or cannot initialize, report that exact connection problem. Do not read the private secrets file or attempt API-key authentication from this manual Desktop workflow.
 
 Select the task mechanically:
 
@@ -58,10 +60,10 @@ Execution rules:
 - Do not add compatibility aliases, transitional commands, speculative features, unrelated refactors, or work assigned to later issues.
 - Add or update focused tests for behavior changed by this task.
 - Run task-specific tests first, then every applicable repository check.
-- Runtime Spotify configuration loads repository-relative `resources/spotify-secrets.env` directly. Never read, display, log, modify, commit, paste into Linear, or duplicate its contents. Use `spotify-secrets.env.example` only to understand variable names.
-- `LINEAR_API_KEY` is host/proxy-only. The agent receives a placeholder and must never attempt to retrieve or expose the real key.
+- Runtime and tests may load repository-relative `resources/spotify-secrets.env` through approved code paths. Never directly open, print, inspect, modify, commit, paste into Linear, or duplicate its contents. Use `spotify-secrets.env.example` only to understand variable names.
+- `LINEAR_API_KEY` is reserved for the separate Ralph host/proxy path and is not used by this OAuth Desktop workflow. Never attempt to retrieve or expose it.
 - Do not claim completion if an applicable check fails or an expected test is skipped.
-- Do not create a Git commit, push a branch, open a pull request, rewrite history, modify remotes, or stage files. The host-side Ralph runner exclusively owns staging, commits, and pushes after it validates your result.
+- Follow the repository's Git instructions. Do not rewrite history, force-push, modify remotes, or stage unrelated files. Do not commit or push unless the user or repository instructions authorize it; if authorized, publish only after the completion gate passes.
 
 Completion gate:
 

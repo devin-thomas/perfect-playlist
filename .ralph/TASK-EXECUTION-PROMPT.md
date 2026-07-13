@@ -62,7 +62,7 @@ Execution rules:
 - Do not add compatibility aliases, transitional commands, speculative features, unrelated refactors, or work assigned to later issues.
 - Add or update focused tests for behavior changed by this task.
 - Run task-specific tests first, then every applicable repository check.
-- Runtime Spotify configuration loads repository-relative `resources/spotify-secrets.env` directly. Never read, display, log, modify, commit, paste into Linear, or duplicate its contents. Use `spotify-secrets.env.example` only to understand variable names.
+- Runtime and tests may load repository-relative `resources/spotify-secrets.env` through approved code paths. Never directly open, print, inspect, modify, commit, paste into Linear, or duplicate its contents. Use `spotify-secrets.env.example` only to understand variable names.
 - `LINEAR_API_KEY` is host/proxy-only. The agent receives a placeholder and must never attempt to retrieve or expose the real key.
 - Do not claim completion if an applicable check fails or an expected test is skipped.
 - Do not create a Git commit, push a branch, open a pull request, rewrite history, modify remotes, or stage files. The host-side Ralph runner exclusively owns staging, commits, and pushes after it validates your result.

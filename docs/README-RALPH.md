@@ -25,7 +25,6 @@ RalphOnce.ps1
 Setup-Ralph.ps1
 README-RALPH.md
 RALPH-SETUP-DECISIONS.md
-.codex/config.toml
 .ralph/.gitignore
 .ralph/config.json
 .ralph/Ralph.Core.ps1
@@ -57,7 +56,7 @@ spotify-secrets.env.example
 
 Environment names must not contain Markdown escape backslashes. Use `SPOTIPY_CLIENT_ID`, not `SPOTIPY\_CLIENT\_ID`.
 
-The private file contains the seven names shown in repository-root `spotify-secrets.env.example`. Perfect Playlist reads the Spotify values directly. `Setup-Ralph.ps1` alone reads `LINEAR_API_KEY` to register Docker's domain-scoped proxy secret; task agents must never read the file.
+The private file contains the names shown in repository-root `spotify-secrets.env.example`. Perfect Playlist reads the Spotify values directly. Setting `PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS=1` makes every full pytest run include the temporary public Spotify create/verify/unfollow test. `Setup-Ralph.ps1` alone reads `LINEAR_API_KEY` to register Docker's domain-scoped proxy secret; task agents must never directly inspect the file.
 
 ## 2. Install Docker Sandboxes
 
@@ -92,7 +91,7 @@ The setup command:
 4. creates or reuses `perfect-playlist-ralph`;
 5. verifies Codex, Python project dependencies, and read-only Linear MCP access.
 
-The actual Linear key exists only in the gitignored private file and Docker's secret store; it is not committed. Docker exposes only a generated placeholder and substitutes the real value for requests to `mcp.linear.app`. Docker currently documents custom secrets as an experimental, global registration; the credential is host-held and domain-scoped, but it is not limited to only the named sandbox.
+The actual Linear key exists only in the gitignored private file and Docker's secret store; it is not committed. Ralph injects its bearer-token MCP configuration into each sandbox Codex invocation, while Codex Desktop continues using the user's global OAuth Linear connection. Docker exposes only a generated placeholder and substitutes the real value for requests to `mcp.linear.app`. Docker currently documents custom secrets as an experimental, global registration; the credential is host-held and domain-scoped, but it is not limited to only the named sandbox.
 
 Docker's current custom-secret interface passes the value to the short-lived `sbx` process during registration, which means another process running as your Windows user could theoretically inspect it. Run setup only on your trusted PC and close unrelated processes first if you want the narrowest exposure window.
 
@@ -107,7 +106,7 @@ pwsh .\Setup-Ralph.ps1 -SkipOpenAIOAuth -SkipLinearSecret -ForceBootstrap
 Review the files, then commit them before asking Ralph to modify the project:
 
 ```powershell
-git add Ralph.ps1 RalphOnce.ps1 Setup-Ralph.ps1 README-RALPH.md RALPH-SETUP-DECISIONS.md .codex .ralph
+git add Ralph.ps1 RalphOnce.ps1 Setup-Ralph.ps1 docs/README-RALPH.md docs/RALPH-SETUP-DECISIONS.md .ralph
 git commit -m "chore: add bounded Ralph Codex runner"
 git push
 ```

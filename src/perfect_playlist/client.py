@@ -44,6 +44,8 @@ class PlaylistClient(Protocol):
         items: Sequence[str],
     ) -> dict[str, Any]: ...
 
+    def current_user_unfollow_playlist(self, playlist_id: str) -> None: ...
+
 
 class TrackLookupClient(Protocol):
     def search(

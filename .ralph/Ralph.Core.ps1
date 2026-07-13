@@ -64,10 +64,7 @@ function Assert-RalphRepository
         throw "Run Ralph from the repository containing these scripts. Expected '$expectedRoot', got '$actualRoot'."
     }
 
-    foreach ($path in @(
-        $script:RalphPromptPath,
-        (Join-Path $script:RalphRepositoryRoot ".codex/config.toml")
-    ))
+    foreach ($path in @($script:RalphPromptPath))
     {
         if (-not (Test-Path -LiteralPath $path -PathType Leaf))
         {
@@ -585,6 +582,12 @@ function Invoke-RalphCodexAttempt
         "--color", "never",
         "--model", $Model,
         "--config", "model_reasoning_effort=`"$ReasoningEffort`"",
+        "--config", "mcp_servers.linear.url=`"https://mcp.linear.app/mcp`"",
+        "--config", "mcp_servers.linear.bearer_token_env_var=`"LINEAR_API_KEY`"",
+        "--config", "mcp_servers.linear.required=true",
+        "--config", "mcp_servers.linear.startup_timeout_sec=20",
+        "--config", "mcp_servers.linear.tool_timeout_sec=90",
+        "--config", "mcp_servers.linear.default_tools_approval_mode=`"approve`"",
         "--output-last-message", $lastMessageRelative,
         "-"
     )

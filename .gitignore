@@ -4,6 +4,7 @@ spotify-secrets.env
 *.cache
 __pycache__/
 .pytest_cache/
+.pytest-tmp/
 .mypy_cache/
 .mypy_cache_local/
 .ruff_cache/
