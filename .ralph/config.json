@@ -1,0 +1,13 @@
+{
+  "sandboxName": "perfect-playlist-ralph",
+  "boundedBranch": "implementation",
+  "baseBranch": "main",
+  "defaultIterations": 5,
+  "defaultModel": "gpt-5.6-luna",
+  "mediumTimeoutMinutes": 20,
+  "highTimeoutMinutes": 40,
+  "bootstrapTimeoutMinutes": 10,
+  "pushAttempts": 3,
+  "linearAttempts": 3,
+  "secretFile": "resources/spotify-secrets.env"
+}
