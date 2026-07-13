@@ -7,13 +7,14 @@ This is the sole active engineering plan. It reconciles the original build plan,
 ## Linear Tracking
 
 - [Parent 1 - Canonical core and CLI shell](https://linear.app/devin-main/issue/M-115/13-establish-the-canonical-core-and-cli-shell)
+- [First child - Flatten the Python package](https://linear.app/devin-main/issue/M-135/10-flatten-the-python-package-to-the-repository-root)
 - [Parent 2 - Safe deterministic workflows](https://linear.app/devin-main/issue/M-116/23-deliver-safe-deterministic-workflows)
 - [Parent 3 - Read-only tools, agent interface, and QA](https://linear.app/devin-main/issue/M-117/33-complete-read-only-tools-agent-interface-and-qa)
 - [Independent final release review](https://linear.app/devin-main/issue/M-27/final-release-review-and-docstutorialreadme-cleanup-pass)
 
 The parent issues are ordered by numeric title and dependency: Parent 2 is blocked by Parent 1, Parent 3 is blocked by Parent 2, and the independent final review is blocked by Parent 3.
 
-Children are also dependency-chained in coordinate order: `[1.1]` through `[1.6]`, then `[2.1]` through `[2.6]`, then `[3.1]` through `[3.6]`. Linear's visual issue order and numeric issue IDs do not define execution order. Use `docs/TASK-EXECUTION-PROMPT.md` unchanged to select and complete the single next executable child.
+Children are also dependency-chained in coordinate order: `[1.0]` through `[1.6]`, then `[2.1]` through `[2.6]`, then `[3.1]` through `[3.6]`. Linear's visual issue order and numeric issue IDs do not define execution order. The canonical `.ralph/TASK-EXECUTION-PROMPT.md` selects and completes the single next executable child.
 
 ## Baseline
 
@@ -23,15 +24,14 @@ The current implementation still exposes superseded grouped commands and concept
 
 ## Credential Decision
 
-Do not rename `resources/secrets.md` to `.env`.
+Use one repository-relative private file: `resources/spotify-secrets.env`.
 
-- Runtime configuration already uses `python-dotenv` and the repository-root `.env`.
-- `.env` and `resources/` are already gitignored; `.env.example` contains safe placeholders.
-- `C:\dev\personal\spotify-playlist-modify\resources\secrets.md` remains the maintainer-only source note.
-- Developers copy the three `SPOTIPY_*` values into local `.env`; production code must never parse Markdown credentials.
-- No credential values, OAuth codes, token caches, or `.env` files may enter commits, issue descriptions, logs, or test output.
-
-No code-conversion task is needed. Credential setup and documentation are covered by the final review.
+- Runtime Spotify configuration loads that file directly through `python-dotenv`.
+- Ralph reads `LINEAR_API_KEY` only in the host setup process to register Docker's domain-scoped Linear proxy secret; the agent receives only a placeholder.
+- `resources/`, `spotify-secrets.env`, and legacy `.env` files are gitignored.
+- `spotify-secrets.env.example` is the only committed credential-shape template.
+- Agents must never read, display, log, modify, commit, paste into Linear, or duplicate the real file's contents.
+- Credential values, OAuth codes, token caches, PEM/key material, and non-example environment files may not enter commits, issue descriptions, transcripts, or test output.
 
 ## Required Directive for Every Task
 
@@ -41,7 +41,7 @@ Every task owner must:
 2. Log and report the total whole minutes worked.
 3. Mark the task complete only when its acceptance criteria are done and all applicable checks and tests pass.
 4. If any test fails or is skipped, report that **boldly and clearly**, explain why, and do not represent the task as fully verified. Prefer resolving failures and eliminating unintended skips before handoff.
-5. For local Spotify credentials, use `C:\dev\personal\spotify-playlist-modify\resources\secrets.md` to populate the gitignored repository-root `.env`. Never commit or paste secrets.
+5. Credentials live only in gitignored `resources/spotify-secrets.env`. Never read, display, log, modify, commit, paste into Linear, or duplicate its contents. Use `spotify-secrets.env.example` only to understand variable names.
 
 ## Parent 1 of 3 - Establish the Canonical Core and CLI Shell
 
@@ -49,12 +49,13 @@ Outcome: one TrackSequence model, one Source pipeline, predictable authenticatio
 
 Ordered child tasks:
 
-1. Implement the URI-only `TrackSequence` value and strict validation while preserving order and duplicates.
-2. Implement extension-driven YAML, JSON, and text Source parsing with ignored extra metadata and no silent skips.
-3. Implement Spotify playlist and single-track URL/URI Sources; reject raw IDs, stdin, and arbitrary remote documents with actionable errors.
-4. Implement interactive and non-interactive authentication behavior, cache refresh, and exit-code-safe error handling.
-5. Replace grouped legacy commands with `build`, `add`, `verify`, `export`, `search`, and `inspect`; retain only the `auth` group.
-6. Remove repair, resolve, dry-run, position insertion, legacy manifest models, aliases, compatibility shims, and unreachable tests/code.
+1. Flatten the Python package from `src/perfect_playlist` to repository-root `perfect_playlist`, including packaging, tooling, and import validation.
+2. Implement the URI-only `TrackSequence` value and strict validation while preserving order and duplicates.
+3. Implement extension-driven YAML, JSON, and text Source parsing with ignored extra metadata and no silent skips.
+4. Implement Spotify playlist and single-track URL/URI Sources; reject raw IDs, stdin, and arbitrary remote documents with actionable errors.
+5. Implement interactive and non-interactive authentication behavior, cache refresh, and exit-code-safe error handling.
+6. Replace grouped legacy commands with `build`, `add`, `verify`, `export`, `search`, and `inspect`; retain only the `auth` group.
+7. Remove repair, resolve, dry-run, position insertion, legacy manifest models, aliases, compatibility shims, and unreachable tests/code.
 
 Parent 1 blocks Parent 2.
 

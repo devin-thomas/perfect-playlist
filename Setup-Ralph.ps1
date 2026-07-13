@@ -32,17 +32,30 @@ if (-not $SkipOpenAIOAuth)
 if (-not $SkipLinearSecret)
 {
     Write-Host ""
-    Write-Host "Paste the scoped Linear API key. Docker currently stores custom proxy secrets globally, domain-scoped to mcp.linear.app."
-    Write-Host "The value is not written to the repository or to Ralph logs."
+    Write-Host "Registering the scoped Linear API key from resources/spotify-secrets.env."
+    Write-Host "Docker stores it as a custom proxy secret domain-scoped to mcp.linear.app; the agent receives only a placeholder."
 
-    $secureValue = Read-Host "Linear API key" -AsSecureString
-    $plainValue = [System.Net.NetworkCredential]::new("", $secureValue).Password
+    $plainValue = $null
+    foreach ($line in Get-Content -LiteralPath $script:RalphSecretPath)
+    {
+        if ([string]::IsNullOrWhiteSpace($line) -or $line.TrimStart().StartsWith("#"))
+        {
+            continue
+        }
+
+        $parts = $line -split "=", 2
+        if ($parts.Count -eq 2 -and $parts[0].Trim() -ceq "LINEAR_API_KEY")
+        {
+            $plainValue = $parts[1].Trim().Trim('"').Trim("'")
+            break
+        }
+    }
 
     try
     {
-        if ([string]::IsNullOrWhiteSpace($plainValue))
+        if ([string]::IsNullOrWhiteSpace($plainValue) -or $plainValue -ceq "value")
         {
-            throw "No Linear API key was supplied."
+            throw "LINEAR_API_KEY is missing or still uses the example placeholder in resources/spotify-secrets.env."
         }
 
         & sbx secret set-custom -g `
@@ -58,7 +71,6 @@ if (-not $SkipLinearSecret)
     finally
     {
         $plainValue = $null
-        $secureValue = $null
     }
 }
 

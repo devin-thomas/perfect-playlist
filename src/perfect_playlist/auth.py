@@ -20,6 +20,7 @@ REQUIRED_SPOTIFY_ENV_VARS = (
     "SPOTIPY_CLIENT_SECRET",
     "SPOTIPY_REDIRECT_URI",
 )
+SPOTIFY_SECRETS_FILE = Path("resources/spotify-secrets.env")
 
 
 def missing_spotify_auth_env() -> list[str]:
@@ -34,7 +35,7 @@ def build_auth_manager(
     open_browser: bool = True,
 ) -> SpotifyOAuth:
     """Build the Spotipy OAuth manager for local CLI usage."""
-    load_dotenv()
+    load_dotenv(dotenv_path=SPOTIFY_SECRETS_FILE)
     missing = missing_spotify_auth_env()
     if missing:
         names = ", ".join(missing)

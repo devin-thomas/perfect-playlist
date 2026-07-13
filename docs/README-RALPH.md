@@ -12,7 +12,7 @@ This package implements a bounded Ralph Wiggum loop around Codex in Docker Sandb
 - Medium attempts have a 20-minute timeout; High recovery attempts have a 40-minute timeout.
 - M-27 is never run. When only M-27 remains, bounded Ralph exits successfully with Review Required.
 - Codex never stages, commits, pushes, opens a PR, or merges. The host PowerShell runner owns staging, commits, and pushes.
-- Successful commits use `M-118: <issue title>` formatting.
+- Successful commits use `<TASK_ID>: <issue title>` formatting.
 - Ralph permits pre-existing dirty files but stops if Codex touches one of those paths.
 - Existing staged changes are not allowed.
 - Logs and state are written under gitignored `.ralph/logs/` and `.ralph/state/`.
@@ -52,10 +52,12 @@ The real file must be ignored by Git. The example may be committed:
 
 ```text
 resources/spotify-secrets.env
-resources/spotify-secrets.env.example
+spotify-secrets.env.example
 ```
 
 Environment names must not contain Markdown escape backslashes. Use `SPOTIPY_CLIENT_ID`, not `SPOTIPY\_CLIENT\_ID`.
+
+The private file contains the seven names shown in repository-root `spotify-secrets.env.example`. Perfect Playlist reads the Spotify values directly. `Setup-Ralph.ps1` alone reads `LINEAR_API_KEY` to register Docker's domain-scoped proxy secret; task agents must never read the file.
 
 ## 2. Install Docker Sandboxes
 
@@ -85,14 +87,14 @@ pwsh .\Setup-Ralph.ps1
 The setup command:
 
 1. starts Docker's host-side OpenAI OAuth flow for your Codex subscription;
-2. prompts securely for the scoped Linear API key;
+2. reads `LINEAR_API_KEY` from the gitignored Spotify secrets file without printing it;
 3. registers it with Docker's currently documented `sbx secret set-custom -g` flow, domain-scoped to `mcp.linear.app`, using the placeholder environment variable `LINEAR_API_KEY`;
 4. creates or reuses `perfect-playlist-ralph`;
 5. verifies Codex, Python project dependencies, and read-only Linear MCP access.
 
-The actual Linear key is not written into the repository. Docker exposes only a generated placeholder and substitutes the real value for requests to `mcp.linear.app`. Docker currently documents custom secrets as an experimental, global registration; the credential is still host-held and domain-scoped, but it is not limited to only the named sandbox.
+The actual Linear key exists only in the gitignored private file and Docker's secret store; it is not committed. Docker exposes only a generated placeholder and substitutes the real value for requests to `mcp.linear.app`. Docker currently documents custom secrets as an experimental, global registration; the credential is host-held and domain-scoped, but it is not limited to only the named sandbox.
 
-`Setup-Ralph.ps1` reads the key through a secure prompt, so it is not pasted into your PowerShell command history. Docker’s current custom-secret interface still passes the value to the short-lived `sbx` process, which means another process running as your Windows user could theoretically inspect it during registration. Run setup only on your trusted PC and close unrelated processes first if you want the narrowest exposure window.
+Docker's current custom-secret interface passes the value to the short-lived `sbx` process during registration, which means another process running as your Windows user could theoretically inspect it. Run setup only on your trusted PC and close unrelated processes first if you want the narrowest exposure window.
 
 To repeat only the bootstrap check later:
 
@@ -197,7 +199,7 @@ If push fails after three attempts, Ralph leaves the verified local commit and c
 .ralph/state/latest-run.json
 ```
 
-The runner redacts values found in `resources/spotify-secrets.env` and `.env` before writing captured output. The Linear key is proxy-managed and is not available to the agent as plaintext.
+The runner redacts values found in `resources/spotify-secrets.env` and `.env` before writing captured output. Although the private file stores `LINEAR_API_KEY`, the key is registered host-side and remains proxy-managed; it is not available to the agent as plaintext.
 
 ## No pull requests
 

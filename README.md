@@ -54,18 +54,23 @@ Start with [the documentation index](docs/README.md) when implementing or review
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -e ".[dev,yaml]"
-Copy-Item .env.example .env
+New-Item -ItemType Directory -Force resources | Out-Null
+Copy-Item spotify-secrets.env.example resources/spotify-secrets.env
 ```
 
-Populate the local, gitignored `.env`:
+Populate the local, gitignored `resources/spotify-secrets.env`:
 
 ```env
 SPOTIPY_CLIENT_ID=your_client_id_here
 SPOTIPY_CLIENT_SECRET=your_client_secret_here
 SPOTIPY_REDIRECT_URI=http://127.0.0.1:8888/callback
+SPOTIFY_REFRESH_TOKEN=your_refresh_token_here
+SPOTIFY_ACCOUNT_ID=your_account_id_here
+SPOTIFY_USER_ID=your_user_id_here
+LINEAR_API_KEY=your_linear_api_key_here
 ```
 
-The package already loads this file with `python-dotenv`. Project maintainers also have a private credential note at `C:\dev\personal\spotify-playlist-modify\resources\secrets.md`; it stays gitignored and must never be committed. Copy values into `.env` locally rather than changing code to parse the Markdown file.
+The package loads this file directly with `python-dotenv`. Ralph uses `LINEAR_API_KEY` only during host-side Docker proxy-secret registration; the implementation agent receives a placeholder and must never read or expose the file. The safe committed shape is `spotify-secrets.env.example`. The real file, its values, OAuth material, and token caches must never be committed.
 
 Register the exact redirect URI in Spotify's developer dashboard, then authorize once:
 

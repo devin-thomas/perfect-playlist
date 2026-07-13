@@ -35,7 +35,7 @@ Before changing anything:
 Select the task mechanically:
 
 1. M-115, M-116, and M-117 are organizational parent containers, not implementation tasks. Never select a parent as the task to implement.
-2. Child-title coordinates define plan order: [1.1] through [1.6], then [2.1] through [2.6], then [3.1] through [3.6].
+2. Child-title coordinates define plan order: [1.0] through [1.6], then [2.1] through [2.6], then [3.1] through [3.6].
 3. If exactly one child is already In Progress, resume that child if its blockers are complete. If more than one child is In Progress, stop and report the inconsistent Linear state instead of guessing.
 4. Otherwise, select the lowest-coordinate incomplete child whose blockers are all Done.
 5. Never select M-27. When every implementation child is Done, report `Status: Review Required` as described above.
@@ -62,8 +62,8 @@ Execution rules:
 - Do not add compatibility aliases, transitional commands, speculative features, unrelated refactors, or work assigned to later issues.
 - Add or update focused tests for behavior changed by this task.
 - Run task-specific tests first, then every applicable repository check.
-- For local Spotify credentials, use the repository-relative `resources/spotify-secrets.env` file to populate the gitignored repository-root `.env` when credentials are required. Never modify `resources/spotify-secrets.env`.
-- Never display, log, commit, paste into Linear, or otherwise expose secret values, OAuth codes, access tokens, refresh tokens, token caches, `.env` contents, or the contents of `resources/spotify-secrets.env`.
+- Runtime Spotify configuration loads repository-relative `resources/spotify-secrets.env` directly. Never read, display, log, modify, commit, paste into Linear, or duplicate its contents. Use `spotify-secrets.env.example` only to understand variable names.
+- `LINEAR_API_KEY` is host/proxy-only. The agent receives a placeholder and must never attempt to retrieve or expose the real key.
 - Do not claim completion if an applicable check fails or an expected test is skipped.
 - Do not create a Git commit, push a branch, open a pull request, rewrite history, modify remotes, or stage files. The host-side Ralph runner exclusively owns staging, commits, and pushes after it validates your result.
 
@@ -136,4 +136,4 @@ Do not start another task after reporting.
 
 ## Initial selection
 
-With the original Linear state, the algorithm selected `[1.1] M-118`. The unchanged selection process continues through `[3.6]`. It then stops with `Review Required`; it never starts M-27.
+With the current Linear state, the algorithm selects `[1.0] M-135`. The unchanged selection process then continues through `[1.1] M-118` and `[3.6]`. It stops with `Review Required`; it never starts M-27.

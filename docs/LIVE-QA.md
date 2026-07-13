@@ -51,8 +51,8 @@ the requested cleanup and push have not happened yet.
 
 ## Live Search Results
 
-Client-credential searches succeeded using the app credentials from
-`resources/secrets.md`. The selected URIs were:
+Client-credential searches succeeded using the private app credentials now
+stored in `resources/spotify-secrets.env`. The selected URIs were:
 
 | Requested track | Selected variant | URI |
 | --- | --- | --- |
@@ -142,7 +142,7 @@ deprecated `user_playlist_create()` helper to
 
 ## Important Safety Notes
 
-- Never commit `resources/secrets.md`, `.env`, token caches, authorization
+- Never commit `resources/spotify-secrets.env`, `.env`, token caches, authorization
   codes, client secrets, or access tokens.
 - The six selected URIs are public Spotify identifiers and are safe to keep in
   a temporary local fixture, but the fixture should not replace the existing

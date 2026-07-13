@@ -78,7 +78,7 @@ This document records the interview that defined the Perfect Playlist Ralph runn
     **Answer: A.** Update the canonical prompt so M-27 is never selectable and implementation completion becomes Review Required.
 
 24. **How should Docker authenticate to Linear?**  
-    **Answer: A.** A dedicated scoped Linear API key stored as a Docker custom secret, exposed only through the MCP authorization path.
+    **Answer: A, storage path later consolidated.** The scoped Linear key is stored in gitignored `resources/spotify-secrets.env`. Host setup registers it as a Docker custom proxy secret exposed only through the MCP authorization path.
 
 25. **How should `implementation` start?**  
     **Answer: A.** If absent, create it from the currently checked-out branch; if it exists, resume and synchronize it safely.
@@ -93,7 +93,7 @@ This document records the interview that defined the Perfect Playlist Ralph runn
     **Answer:** Full access.
 
 29. **How should the Spotify secret file be named?**  
-    **Answer: C.** Use `resources/spotify-secrets.env`, with `resources/spotify-secrets.env.example` as the safe committed example.
+    **Answer: C, example location refined.** Use `resources/spotify-secrets.env`, with repository-root `spotify-secrets.env.example` as the safe committed example.
 
 30. **What happens after a successful RalphOnce?**  
     **Answer: A.** Commit and push on the currently checked-out branch, then stop.
@@ -110,7 +110,7 @@ This document records the interview that defined the Perfect Playlist Ralph runn
     **Answer: A.** No. Only the MCP proxy path receives it; the agent sees a placeholder, not the real secret.
 
 34. **What commit message format should be used?**  
-    **Answer: A.** `M-118: <title>`.
+    **Answer: A, generalized.** `<TASK_ID>: <title>` (for example, `M-135: Flatten the Python package to the repository root`).
 
 35. **What if a task reports Complete but creates no Git changes?**  
     **Answer: A.** Treat it as incomplete/suspicious and stop; do not create an empty commit.

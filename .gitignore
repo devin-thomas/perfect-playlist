@@ -1,4 +1,5 @@
 .env
+spotify-secrets.env
 .spotify_token_cache
 *.cache
 __pycache__/
