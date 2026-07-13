@@ -38,7 +38,6 @@ The approved next CLI is specified in [the CLI contract](docs/CLI-CONTRACT.md). 
 - [Authoritative CLI contract](docs/CLI-CONTRACT.md)
 - [Reconciled implementation plan](docs/IMPLEMENTATION-PLAN.md)
 - [Live Spotify QA evidence and handoff](docs/LIVE-QA.md)
-- [LinkedIn progress-post draft](docs/LINKEDIN-DRAFT.md)
 
 Start with [the documentation index](docs/README.md) when implementing or reviewing the project.
 

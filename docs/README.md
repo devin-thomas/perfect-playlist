@@ -9,8 +9,6 @@ Read in this order:
 3. [Implementation Plan](IMPLEMENTATION-PLAN.md) - ordered engineering work derived from the contract.
 4. [Live QA](LIVE-QA.md) - credentialed Spotify evidence, unresolved external behavior, and safety notes.
 
-[LinkedIn Draft](LINKEDIN-DRAFT.md) is communications material, not a product specification.
-
 Use the canonical [Automatic Next-Task Prompt](../.ralph/TASK-EXECUTION-PROMPT.md) unchanged for each implementation session. Linear blockers identify the one next child, so the user never has to supply or infer an issue ID.
 
 Ralph operators should also read:
