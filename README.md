@@ -86,8 +86,8 @@ Offline checks:
 
 ```powershell
 python -m pytest
-python -m ruff check --no-cache src tests
-python -m mypy src
+python -m ruff check --no-cache perfect_playlist tests
+python -m mypy perfect_playlist
 ```
 
 The live Spotify test is controlled by `resources/spotify-secrets.env`. Set

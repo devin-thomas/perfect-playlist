@@ -41,6 +41,9 @@ Issues = "https://github.com/devin-thomas/perfect-playlist/issues"
 [project.scripts]
 perfect-playlist = "perfect_playlist.cli:app"
 
+[tool.hatch.build.targets.wheel]
+packages = ["perfect_playlist"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

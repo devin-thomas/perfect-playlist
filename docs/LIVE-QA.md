@@ -52,8 +52,8 @@ The local package is implemented and verified through commit `700a677`:
 Latest local checks before the live-test attempt:
 
 - `python -m pytest`: `37 passed, 1 skipped`.
-- `python -m ruff check --no-cache src tests`: passed.
-- `python -m mypy src`: passed with no issues in 14 source files.
+- `python -m ruff check --no-cache perfect_playlist tests`: passed.
+- `python -m mypy perfect_playlist`: passed with no issues in 14 source files.
 
 The remote is configured as `origin` pointing to the expected GitHub
 repository. The branch is currently ahead of `origin/main` by eight commits;
@@ -137,8 +137,8 @@ deprecated `user_playlist_create()` helper to
   `39 passed, 1 failed, 0 skipped`. The single failure is persisted privacy;
   Spotify returned `public=true`, and the package aborted with zero tracks
   added.
-- `python -m ruff check --no-cache src tests`: passed.
-- `python -m mypy src`: passed with no issues in 14 source files.
+- `python -m ruff check --no-cache perfect_playlist tests`: passed.
+- `python -m mypy perfect_playlist`: passed with no issues in 14 source files.
 - Six-track final QA playlist: 6 tracks added, exact order verified.
 - The accidentally public five-track integration fixture was emptied and
 
