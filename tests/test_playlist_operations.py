@@ -4,8 +4,18 @@ from typing import Any
 import pytest
 from spotipy.exceptions import SpotifyException
 
-from perfect_playlist.errors import InvalidTrackRefError, PlaylistAddError, PlaylistCreateError
-from perfect_playlist.playlist import add_items_in_order, create_playlist_from_uris
+from perfect_playlist.errors import (
+    InvalidTrackRefError,
+    PlaylistAddError,
+    PlaylistCreateError,
+    PlaylistVerificationError,
+)
+from perfect_playlist.models import TrackSequence
+from perfect_playlist.playlist import (
+    add_items_in_order,
+    build_public_playlist,
+    create_playlist_from_uris,
+)
 
 
 def _track_uri(index: int) -> str:
@@ -22,6 +32,8 @@ class PlaylistClient:
         self.added: list[dict[str, object]] = []
         self._playlist_items = playlist_items or []
         self._persisted_public = persisted_public
+        self.playlists: list[dict[str, object]] = []
+        self.user: dict[str, object] = {"id": "user-123"}
 
     def current_user_playlist_create(
         self,
@@ -44,6 +56,13 @@ class PlaylistClient:
             "external_urls": {"spotify": "https://open.spotify.com/playlist/playlist-123"},
             "name": name,
         }
+
+    def current_user(self) -> dict[str, object]:
+        return self.user
+
+    def current_user_playlists(self, limit: int, offset: int) -> dict[str, object]:
+        page = self.playlists[offset : offset + limit]
+        return {"items": page, "next": None}
 
     def playlist(self, playlist_id: str, fields: str) -> dict[str, object]:
         requested_public = self.created[-1]["public"]
@@ -169,3 +188,48 @@ def test_add_items_reports_chunk_and_partial_playlist_url() -> None:
     message = str(exc_info.value)
     assert "chunk 1" in message
     assert "https://open.spotify.com/playlist/playlist-123" in message
+
+
+def test_build_public_uses_default_suffix_and_verifies_contents() -> None:
+    uris = [_track_uri(1), _track_uri(2)]
+    client = PlaylistClient(playlist_items=uris)
+    client.playlists = [
+        {"name": "My Perfect Playlist", "owner": {"id": "user-123"}},
+        {"name": "Ignored followed list", "owner": {"id": "other-user"}},
+    ]
+
+    result = build_public_playlist(TrackSequence(uris=tuple(uris)), client=client)
+
+    assert result.playlist.name == "My Perfect Playlist (1)"
+    assert client.created[0] == {
+        "name": "My Perfect Playlist (1)",
+        "public": True,
+        "description": "Built with Perfect Playlist",
+        "collaborative": False,
+    }
+
+
+def test_build_public_rejects_explicit_owned_name_before_creation() -> None:
+    client = PlaylistClient()
+    client.playlists = [{"name": "Taken", "owner": {"id": "user-123"}}]
+
+    with pytest.raises(PlaylistCreateError, match="already own"):
+        build_public_playlist(TrackSequence(uris=(_track_uri(1),)), name="Taken", client=client)
+
+    assert client.created == []
+
+
+def test_build_public_rejects_empty_sequence_before_owned_scan() -> None:
+    client = PlaylistClient()
+
+    with pytest.raises(PlaylistCreateError, match="non-empty"):
+        build_public_playlist(TrackSequence(), client=client)
+
+    assert client.created == []
+
+
+def test_build_public_rejects_mismatched_readback() -> None:
+    client = PlaylistClient(playlist_items=[_track_uri(2)])
+
+    with pytest.raises(PlaylistVerificationError, match="different tracks"):
+        build_public_playlist(TrackSequence(uris=(_track_uri(1),)), client=client)

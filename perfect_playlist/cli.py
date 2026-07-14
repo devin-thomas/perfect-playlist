@@ -9,6 +9,8 @@ from rich.console import Console
 
 from .client import SPOTIFY_API_EXCEPTIONS
 from .errors import SpotifyExactError
+from .io import read_source
+from .playlist import build_public_playlist
 
 app = typer.Typer(help="Build deterministic Spotify playlists from exact track Sources.")
 auth_app = typer.Typer(help="Authenticate with Spotify.")
@@ -62,8 +64,15 @@ def build(
     target: Annotated[str | None, typer.Option("--target")] = None,
     private: Annotated[bool, typer.Option("--private")] = False,
 ) -> None:
-    """Show the approved Build shell without performing a partial workflow."""
-    _pending_command("build", "Parent 2")
+    """Build a new public playlist from an exact Source."""
+    if target or private:
+        _pending_command("target/private build", "Parent 2.2")
+    sequence = _run(lambda: read_source(source))
+    result = _run(lambda: build_public_playlist(sequence, name=name))
+    console.print(
+        f'Built and verified "{result.playlist.name}" with '
+        f"{len(result.added_uris)} tracks: {result.playlist.url}"
+    )
 
 
 @app.command("add")

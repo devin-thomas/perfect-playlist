@@ -13,6 +13,14 @@ SPOTIFY_API_EXCEPTIONS = (SpotifyException, SpotifyOauthError, RequestException)
 
 
 class PlaylistClient(Protocol):
+    def current_user(self) -> dict[str, Any]: ...
+
+    def current_user_playlists(
+        self,
+        limit: int,
+        offset: int,
+    ) -> dict[str, Any]: ...
+
     def current_user_playlist_create(
         self,
         name: str,
@@ -27,6 +35,14 @@ class PlaylistClient(Protocol):
         self,
         playlist_id: str,
         items: Sequence[str],
+    ) -> dict[str, Any]: ...
+
+    def playlist_items(
+        self,
+        playlist_id: str,
+        fields: str,
+        limit: int,
+        offset: int,
     ) -> dict[str, Any]: ...
 
 class SourceClient(Protocol):

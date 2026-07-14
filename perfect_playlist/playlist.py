@@ -4,12 +4,19 @@ from collections.abc import Iterable, Sequence
 from typing import TypeVar
 
 from .client import SPOTIFY_API_EXCEPTIONS, PlaylistClient, get_spotify_client
-from .errors import PlaylistAddError, PlaylistCreateError
-from .models import CreatedPlaylist, PlaylistCreateResult
+from .errors import (
+    InvalidTrackRefError,
+    PlaylistAddError,
+    PlaylistCreateError,
+    PlaylistVerificationError,
+)
+from .models import CreatedPlaylist, PlaylistCreateResult, TrackSequence
 from .track_refs import normalize_track_ref
 
 T = TypeVar("T")
 DEFAULT_DESCRIPTION = "Created with perfect-playlist."
+PUBLIC_BUILD_DESCRIPTION = "Built with Perfect Playlist"
+DEFAULT_BUILD_NAME = "My Perfect Playlist"
 
 
 def chunked(items: Sequence[T], size: int = 100) -> Iterable[list[T]]:
@@ -102,3 +109,122 @@ def create_playlist_from_uris(
         playlist=playlist,
         added_uris=normalized,
     )
+
+
+def build_public_playlist(
+    sequence: TrackSequence,
+    *,
+    name: str | None = None,
+    client: PlaylistClient | None = None,
+) -> PlaylistCreateResult:
+    """Build and verify a new public playlist from an exact TrackSequence."""
+    if not sequence.uris:
+        raise PlaylistCreateError("Build requires a non-empty TrackSequence.")
+
+    sp = client or get_spotify_client()
+    owned_names = _owned_playlist_names(sp)
+    playlist_name = _choose_build_name(name, owned_names)
+    result = create_playlist_from_uris(
+        playlist_name,
+        sequence.uris,
+        public=True,
+        description=PUBLIC_BUILD_DESCRIPTION,
+        client=sp,
+    )
+
+    try:
+        stored = TrackSequence(uris=tuple(_read_playlist_uris(result.playlist.id, sp)))
+    except SPOTIFY_API_EXCEPTIONS + (InvalidTrackRefError,) as exc:
+        raise PlaylistVerificationError(
+            f"Could not verify playlist contents after building {result.playlist.url}."
+        ) from exc
+    if stored != sequence:
+        raise PlaylistVerificationError(
+            f"Spotify stored different tracks or order for playlist {result.playlist.url}."
+        )
+    return result
+
+
+def _owned_playlist_names(client: PlaylistClient) -> set[str]:
+    try:
+        user = client.current_user()
+        user_id = user.get("id")
+        if not isinstance(user_id, str) or not user_id:
+            raise PlaylistCreateError("Spotify did not identify the signed-in user.")
+
+        names: set[str] = set()
+        offset = 0
+        while True:
+            page = client.current_user_playlists(limit=50, offset=offset)
+            if not isinstance(page, dict):
+                raise PlaylistCreateError("Spotify returned an invalid owned-playlist page.")
+            items = page.get("items")
+            if not isinstance(items, list):
+                raise PlaylistCreateError("Spotify returned an invalid owned-playlist page.")
+            for item in items:
+                if not isinstance(item, dict):
+                    raise PlaylistCreateError("Spotify returned an invalid owned-playlist entry.")
+                owner = item.get("owner")
+                playlist_name = item.get("name")
+                if isinstance(owner, dict) and owner.get("id") == user_id:
+                    if not isinstance(playlist_name, str):
+                        raise PlaylistCreateError(
+                            "Spotify returned an owned playlist without a name."
+                        )
+                    names.add(playlist_name)
+            if "next" not in page:
+                raise PlaylistCreateError("Spotify returned an incomplete owned-playlist scan.")
+            if page["next"] is None:
+                return names
+            if not items:
+                raise PlaylistCreateError("Spotify returned an incomplete owned-playlist scan.")
+            offset += len(items)
+    except PlaylistCreateError:
+        raise
+    except SPOTIFY_API_EXCEPTIONS as exc:
+        raise PlaylistCreateError(
+            "Spotify rejected the owned-playlist scan; no playlist was created."
+        ) from exc
+
+
+def _choose_build_name(name: str | None, owned_names: set[str]) -> str:
+    if name is not None:
+        if name in owned_names:
+            raise PlaylistCreateError(f"You already own a playlist named {name!r}.")
+        return name
+
+    candidate = DEFAULT_BUILD_NAME
+    suffix = 0
+    while candidate in owned_names:
+        suffix += 1
+        candidate = f"{DEFAULT_BUILD_NAME} ({suffix})"
+    return candidate
+
+
+def _read_playlist_uris(playlist_id: str, client: PlaylistClient) -> list[str]:
+    uris: list[str] = []
+    offset = 0
+    while True:
+        response = client.playlist_items(
+            playlist_id,
+            fields="items(track(uri)),next",
+            limit=100,
+            offset=offset,
+        )
+        if not isinstance(response, dict):
+            raise PlaylistVerificationError("Spotify returned invalid playlist contents.")
+        items = response.get("items")
+        if not isinstance(items, list):
+            raise PlaylistVerificationError("Spotify returned invalid playlist contents.")
+        for item in items:
+            if not isinstance(item, dict):
+                raise PlaylistVerificationError("Spotify returned invalid playlist contents.")
+            track = item.get("track")
+            if not isinstance(track, dict) or not isinstance(track.get("uri"), str):
+                raise PlaylistVerificationError("Spotify returned an inaccessible playlist track.")
+            uris.append(normalize_track_ref(track["uri"]))
+        if response.get("next") is None:
+            return uris
+        if not items:
+            raise PlaylistVerificationError("Spotify returned an incomplete playlist page.")
+        offset += len(items)

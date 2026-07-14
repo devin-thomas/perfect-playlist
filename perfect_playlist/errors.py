@@ -10,6 +10,10 @@ class PlaylistCreateError(SpotifyExactError):
     """Raised when playlist creation fails."""
 
 
+class PlaylistVerificationError(SpotifyExactError):
+    """Raised when Spotify does not store the requested playlist contents."""
+
+
 class PlaylistAddError(SpotifyExactError):
     """Raised when adding a track batch fails."""
 
