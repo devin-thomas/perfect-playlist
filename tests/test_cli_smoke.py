@@ -49,3 +49,27 @@ def test_export_help_includes_the_approved_links_option() -> None:
 
     assert result.exit_code == 0
     assert "--links" in result.output
+
+
+def test_build_rejects_name_and_target_together() -> None:
+    result = CliRunner().invoke(
+        app,
+        ["build", "tracks.txt", "--name", "Name", "--target", "spotify:playlist:123"],
+    )
+
+    assert result.exit_code == 2
+    assert "--name and --target cannot be used together" in result.output
+
+
+def test_non_interactive_private_build_requires_target() -> None:
+    result = CliRunner().invoke(app, ["build", "tracks.txt", "--private"])
+
+    assert result.exit_code == 2
+    assert "Non-interactive private builds require --target" in result.output
+
+
+def test_build_rejects_private_name_combination() -> None:
+    result = CliRunner().invoke(app, ["build", "tracks.txt", "--private", "--name", "Name"])
+
+    assert result.exit_code == 2
+    assert "--private and --name cannot be used together" in result.output

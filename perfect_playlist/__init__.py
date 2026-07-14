@@ -10,6 +10,7 @@ from .models import (
 from .playlist import (
     add_items_in_order,
     build_public_playlist,
+    build_target_playlist,
     chunked,
     create_empty_playlist,
     create_playlist_from_uris,
@@ -30,6 +31,7 @@ __all__ = [
     "TrackSequence",
     "TrackSummary",
     "add_items_in_order",
+    "build_target_playlist",
     "build_public_playlist",
     "chunked",
     "create_empty_playlist",

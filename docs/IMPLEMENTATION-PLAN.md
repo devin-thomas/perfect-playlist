@@ -1,6 +1,6 @@
 # Perfect Playlist Implementation Plan
 
-**Status:** Parent 1 complete; Parent 2 not started.
+**Status:** Parent 1 complete; Parent 2 is in progress through child [2.2].
 
 This is the sole active engineering plan. It reconciles the original build plan, the empty private playlist proposal, the completed task notes, the live-test handoff, and the approved CLI contract.
 
@@ -20,7 +20,7 @@ Children are also dependency-chained in coordinate order: `[1.0]` through `[1.6]
 
 Parent 1 is complete. The repository contains a root-level Python 3.11 package, one URI-only TrackSequence, extension-driven and Spotify Source ingestion, interactive/non-interactive authentication, typed Spotify adapter boundaries, and the approved top-level command shell. Superseded grouped commands, repair, resolve, dry-run, position-based add, prefix verification, and metadata-rich manifest workflows have been removed.
 
-Parent 2 has not started. Its `build`, `add`, `verify`, and `export` command shells are visible but fail closed with exit code `2` without Spotify or filesystem writes. Parent 3 `search` and `inspect` shells follow the same boundary. Existing lower-level playlist and lookup primitives are migration inputs for their assigned future tasks, not shipped implementations of those commands.
+Parent 2 is in progress. New-public Build and owned empty-target Build implement their approved workflows; `add`, `verify`, and `export` remain fail closed with exit code `2` without Spotify or filesystem writes until their assigned tasks. Parent 3 `search` and `inspect` shells follow the same boundary. Existing lower-level playlist and lookup primitives are migration inputs for their assigned future tasks, not shipped implementations of those commands.
 
 ## Credential Decision
 
@@ -60,7 +60,7 @@ Ordered child tasks:
 
 Parent 1 blocks Parent 2.
 
-## Parent 2 of 3 - Deliver Safe Deterministic Workflows (Not Started)
+## Parent 2 of 3 - Deliver Safe Deterministic Workflows (In Progress)
 
 Outcome: Build, Add, Verify, and Export implement the complete approved contract with preflight safety and post-write verification.
 

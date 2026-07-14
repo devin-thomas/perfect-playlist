@@ -7,10 +7,11 @@ from typing import Annotated, NoReturn, TypeVar
 import typer
 from rich.console import Console
 
+from .auth import command_is_interactive
 from .client import SPOTIFY_API_EXCEPTIONS
 from .errors import SpotifyExactError
 from .io import read_source
-from .playlist import build_public_playlist
+from .playlist import build_public_playlist, build_target_playlist
 
 app = typer.Typer(help="Build deterministic Spotify playlists from exact track Sources.")
 auth_app = typer.Typer(help="Authenticate with Spotify.")
@@ -64,11 +65,20 @@ def build(
     target: Annotated[str | None, typer.Option("--target")] = None,
     private: Annotated[bool, typer.Option("--private")] = False,
 ) -> None:
-    """Build a new public playlist from an exact Source."""
-    if target or private:
-        _pending_command("target/private build", "Parent 2.2")
+    """Build a playlist from an exact Source."""
+    if name is not None and target is not None:
+        raise typer.BadParameter("--name and --target cannot be used together.")
+    if name is not None and private:
+        raise typer.BadParameter("--private and --name cannot be used together.")
+    if private and target is None:
+        if not command_is_interactive():
+            raise typer.BadParameter("Non-interactive private builds require --target.")
+        target = typer.prompt("Private playlist link")
     sequence = _run(lambda: read_source(source))
-    result = _run(lambda: build_public_playlist(sequence, name=name))
+    if target is None:
+        result = _run(lambda: build_public_playlist(sequence, name=name))
+    else:
+        result = _run(lambda: build_target_playlist(sequence, target, private=private))
     console.print(
         f'Built and verified "{result.playlist.name}" with '
         f"{len(result.added_uris)} tracks: {result.playlist.url}"

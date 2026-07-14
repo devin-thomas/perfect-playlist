@@ -14,6 +14,7 @@ from perfect_playlist.models import TrackSequence
 from perfect_playlist.playlist import (
     add_items_in_order,
     build_public_playlist,
+    build_target_playlist,
     create_playlist_from_uris,
 )
 
@@ -113,6 +114,35 @@ class FailingAddClient(PlaylistClient):
         items: Sequence[str],
     ) -> dict[str, Any]:
         raise SpotifyException(500, -1, "server error")
+
+
+class TargetPlaylistClient(PlaylistClient):
+    def __init__(
+        self,
+        playlist_items: list[str] | None = None,
+        *,
+        public: bool = True,
+        owner: str = "user-123",
+        collaborative: bool = False,
+        total: int = 0,
+    ) -> None:
+        super().__init__(playlist_items=playlist_items)
+        self.target = {
+            "id": "1234567890123456789012",
+            "uri": "spotify:playlist:1234567890123456789012",
+            "name": "Existing target",
+            "description": "Keep this description",
+            "public": public,
+            "collaborative": collaborative,
+            "owner": {"id": owner},
+            "tracks": {"total": total},
+            "external_urls": {
+                "spotify": "https://open.spotify.com/playlist/1234567890123456789012"
+            },
+        }
+
+    def playlist(self, playlist_id: str, fields: str) -> dict[str, object]:
+        return self.target
 
 
 def test_create_playlist_validates_before_write() -> None:
@@ -233,3 +263,61 @@ def test_build_public_rejects_mismatched_readback() -> None:
 
     with pytest.raises(PlaylistVerificationError, match="different tracks"):
         build_public_playlist(TrackSequence(uris=(_track_uri(1),)), client=client)
+
+
+def test_build_target_accepts_owned_empty_public_playlist_and_preserves_metadata() -> None:
+    uris = [_track_uri(1), _track_uri(2)]
+    client = TargetPlaylistClient(playlist_items=uris)
+
+    result = build_target_playlist(
+        TrackSequence(uris=tuple(uris)),
+        "https://open.spotify.com/playlist/1234567890123456789012",
+        client=client,
+    )
+
+    assert result.playlist.name == "Existing target"
+    assert client.created == []
+    assert client.added == [{"playlist_id": "1234567890123456789012", "items": uris}]
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"owner": "other-user"}, "owned"),
+        ({"collaborative": True}, "Collaborative"),
+        ({"total": 1}, "empty"),
+        ({"public": True, "private": True}, "private"),
+    ],
+)
+def test_build_target_rejects_ineligible_targets(kwargs: dict[str, object], message: str) -> None:
+    private = bool(kwargs.pop("private", False))
+    total = kwargs.get("total", 0)
+    if not isinstance(total, int):
+        total = 0
+    client = TargetPlaylistClient(
+        public=bool(kwargs.get("public", True)),
+        owner=str(kwargs.get("owner", "user-123")),
+        collaborative=bool(kwargs.get("collaborative", False)),
+        total=total,
+    )
+
+    with pytest.raises(PlaylistCreateError, match=message):
+        build_target_playlist(
+            TrackSequence(uris=(_track_uri(1),)),
+            "spotify:playlist:1234567890123456789012",
+            private=private,
+            client=client,
+        )
+
+    assert client.added == []
+
+
+def test_build_target_rejects_empty_sequence_before_reading_target() -> None:
+    client = TargetPlaylistClient()
+
+    with pytest.raises(PlaylistCreateError, match="non-empty"):
+        build_target_playlist(
+            TrackSequence(), "spotify:playlist:1234567890123456789012", client=client
+        )
+
+    assert client.added == []

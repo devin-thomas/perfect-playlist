@@ -11,7 +11,7 @@ from .errors import (
     PlaylistVerificationError,
 )
 from .models import CreatedPlaylist, PlaylistCreateResult, TrackSequence
-from .track_refs import normalize_track_ref
+from .track_refs import normalize_playlist_ref, normalize_track_ref
 
 T = TypeVar("T")
 DEFAULT_DESCRIPTION = "Created with perfect-playlist."
@@ -143,6 +143,88 @@ def build_public_playlist(
             f"Spotify stored different tracks or order for playlist {result.playlist.url}."
         )
     return result
+
+
+def build_target_playlist(
+    sequence: TrackSequence,
+    target: str,
+    *,
+    private: bool = False,
+    client: PlaylistClient | None = None,
+) -> PlaylistCreateResult:
+    """Fill an owned, empty playlist target and verify the exact contents."""
+    if not sequence.uris:
+        raise PlaylistCreateError("Build requires a non-empty TrackSequence.")
+
+    try:
+        playlist_uri = normalize_playlist_ref(target)
+    except InvalidTrackRefError as exc:
+        raise PlaylistCreateError(str(exc)) from exc
+
+    playlist_id = playlist_uri.rsplit(":", 1)[-1]
+    sp = client or get_spotify_client()
+    playlist = _read_build_target(playlist_id, sp)
+
+    try:
+        user = sp.current_user()
+    except SPOTIFY_API_EXCEPTIONS as exc:
+        raise PlaylistCreateError("Could not identify the signed-in Spotify user.") from exc
+    user_id = user.get("id")
+    owner = playlist.get("owner")
+    owner_id = owner.get("id") if isinstance(owner, dict) else None
+    if not isinstance(user_id, str) or not user_id:
+        raise PlaylistCreateError("Spotify did not identify the signed-in user.")
+    if owner_id != user_id:
+        raise PlaylistCreateError("Build target must be owned by the signed-in user.")
+    if playlist.get("collaborative") is True:
+        raise PlaylistCreateError("Collaborative playlists cannot be Build targets.")
+    tracks = playlist.get("tracks")
+    if not isinstance(tracks, dict) or tracks.get("total") != 0:
+        raise PlaylistCreateError("Build target must be empty.")
+    if private and playlist.get("public") is not False:
+        raise PlaylistCreateError("--private requires Spotify to report a private target.")
+
+    name = playlist.get("name")
+    external_urls = playlist.get("external_urls")
+    url = external_urls.get("spotify") if isinstance(external_urls, dict) else None
+    if not isinstance(name, str) or not isinstance(url, str):
+        raise PlaylistCreateError("Spotify returned an invalid Build target.")
+
+    snapshot_id = add_items_in_order(playlist_id, sequence.uris, playlist_url=url, client=sp)
+    try:
+        stored = TrackSequence(uris=tuple(_read_playlist_uris(playlist_id, sp)))
+    except SPOTIFY_API_EXCEPTIONS + (InvalidTrackRefError,) as exc:
+        raise PlaylistVerificationError(
+            f"Could not verify playlist contents after building {url}."
+        ) from exc
+    if stored != sequence:
+        raise PlaylistVerificationError(
+            f"Spotify stored different tracks or order for playlist {url}."
+        )
+
+    return PlaylistCreateResult(
+        playlist=CreatedPlaylist(
+            id=playlist_id,
+            uri=playlist_uri,
+            url=url,
+            name=name,
+            snapshot_id=snapshot_id,
+        ),
+        added_uris=list(sequence.uris),
+    )
+
+
+def _read_build_target(playlist_id: str, client: PlaylistClient) -> dict[str, object]:
+    try:
+        playlist = client.playlist(
+            playlist_id,
+            fields="id,uri,name,description,public,collaborative,owner(id),tracks(total),external_urls(spotify)",
+        )
+    except SPOTIFY_API_EXCEPTIONS as exc:
+        raise PlaylistCreateError(f"Could not read Spotify playlist target {playlist_id}.") from exc
+    if not isinstance(playlist, dict):
+        raise PlaylistCreateError("Spotify returned an invalid Build target.")
+    return playlist
 
 
 def _owned_playlist_names(client: PlaylistClient) -> set[str]:

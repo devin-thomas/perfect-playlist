@@ -4,12 +4,12 @@ Date: 2026-07-13
 Repository: `C:\dev\personal\spotify-playlist-modify`
 Branch: `main`
 
-Current checkpoint: Parent 1 is complete and Parent 2 has not started. The
-canonical TrackSequence, Source pipeline, authentication behavior, and
-top-level command shell are present. Parent 2 commands (`build`, `add`,
-`verify`, and `export`) and Parent 3 commands (`search` and `inspect`) fail
-closed with exit code `2`; they do not write playlists or files or claim
-verification.
+Current checkpoint: Parent 1 is complete and Parent 2 is in progress through
+owned empty-target Build. The canonical TrackSequence, Source pipeline,
+authentication behavior, and top-level command shell are present. Parent 2
+commands `add`, `verify`, and `export`, plus Parent 3 commands (`search` and
+`inspect`), fail closed with exit code `2`; they do not write playlists or files
+or claim verification.
 
 The authoritative behavior is in `CLI-CONTRACT.md`; the ordered work and
 current boundary are in `IMPLEMENTATION-PLAN.md`.
@@ -176,7 +176,8 @@ deprecated `user_playlist_create()` helper to
 2. Do not ship private creation as passing until a live create persists
    `public=false` and the full credentialed suite reports zero failures.
 
-Parent 2 implementation remains intentionally unstarted at this checkpoint.
+Parent 2 implementation is in progress; owned empty-target Build is the latest
+completed workflow checkpoint.
 
 ## Important Safety Notes
 
