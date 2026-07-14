@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from pathlib import Path
 from typing import TypeVar
 
 from .client import SPOTIFY_API_EXCEPTIONS, PlaylistClient, get_spotify_client
 from .errors import PlaylistAddError, PlaylistCreateError
-from .io import read_uri_lines
 from .models import CreatedPlaylist, PlaylistCreateResult
 from .track_refs import normalize_track_ref
-from .verify import verify_playlist_prefix
 
 T = TypeVar("T")
 DEFAULT_DESCRIPTION = "Created with perfect-playlist."
@@ -65,7 +62,6 @@ def add_items_in_order(
     playlist_id: str,
     uris: Sequence[str],
     *,
-    start_position: int | None = None,
     playlist_url: str | None = None,
     client: PlaylistClient | None = None,
 ) -> str:
@@ -76,14 +72,7 @@ def add_items_in_order(
 
     for chunk_index, batch in enumerate(chunked(normalized, 100), start=1):
         try:
-            if start_position is not None and chunk_index == 1:
-                response = sp.playlist_add_items(
-                    playlist_id=playlist_id,
-                    items=batch,
-                    position=start_position,
-                )
-            else:
-                response = sp.playlist_add_items(playlist_id=playlist_id, items=batch)
+            response = sp.playlist_add_items(playlist_id=playlist_id, items=batch)
         except SPOTIFY_API_EXCEPTIONS as exc:
             partial_state = f" Playlist may be incomplete: {playlist_url}" if playlist_url else ""
             raise PlaylistAddError(
@@ -100,55 +89,16 @@ def create_playlist_from_uris(
     *,
     public: bool = False,
     description: str = DEFAULT_DESCRIPTION,
-    dry_run: bool = False,
-    verify: bool = True,
     client: PlaylistClient | None = None,
 ) -> PlaylistCreateResult:
     """Create a playlist from exact track references."""
     normalized = [normalize_track_ref(uri) for uri in uris]
 
-    if dry_run:
-        return PlaylistCreateResult(
-            playlist=CreatedPlaylist(
-                id="dry-run",
-                uri="spotify:playlist:dry-run",
-                url="",
-                name=name,
-            ),
-            added_uris=normalized,
-            verified=None,
-        )
-
     sp = client or get_spotify_client()
     playlist = create_empty_playlist(name, public=public, description=description, client=sp)
     snapshot_id = add_items_in_order(playlist.id, normalized, playlist_url=playlist.url, client=sp)
     playlist.snapshot_id = snapshot_id
-    verified = verify_playlist_prefix(playlist.id, normalized, client=sp) if verify else None
-
     return PlaylistCreateResult(
         playlist=playlist,
         added_uris=normalized,
-        verified=verified,
-    )
-
-
-def create_playlist_from_file(
-    name: str,
-    path: str | Path,
-    *,
-    public: bool = False,
-    description: str = DEFAULT_DESCRIPTION,
-    dry_run: bool = False,
-    verify: bool = True,
-    client: PlaylistClient | None = None,
-) -> PlaylistCreateResult:
-    """Read exact track references from a file and create a playlist."""
-    return create_playlist_from_uris(
-        name=name,
-        uris=read_uri_lines(path),
-        public=public,
-        description=description,
-        dry_run=dry_run,
-        verify=verify,
-        client=client,
     )

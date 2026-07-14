@@ -1,19 +1,44 @@
 # Spotify Live QA Evidence and Handoff
 
-Date: 2026-07-11
+Date: 2026-07-13
 Repository: `C:\dev\personal\spotify-playlist-modify`
 Branch: `main`
 
-Current product direction: a Build creates a public playlist by default or
-fills an owned empty public/private target. Private Build asks for or accepts
-an owned empty private playlist link. The authoritative behavior is in
-`CLI-CONTRACT.md`; the ordered work is in `IMPLEMENTATION-PLAN.md`.
+Current checkpoint: Parent 1 is complete and Parent 2 has not started. The
+canonical TrackSequence, Source pipeline, authentication behavior, and
+top-level command shell are present. Parent 2 commands (`build`, `add`,
+`verify`, and `export`) and Parent 3 commands (`search` and `inspect`) fail
+closed with exit code `2`; they do not write playlists or files or claim
+verification.
+
+The authoritative behavior is in `CLI-CONTRACT.md`; the ordered work and
+current boundary are in `IMPLEMENTATION-PLAN.md`.
 
 This document preserves historical live-test evidence. Legacy command names
 and features mentioned in the chronology describe the implementation at the
 time of testing and are not requirements for the next CLI.
 
-## Current Always-On Baseline
+## Current Parent 1 Verification
+
+On 2026-07-13, the recovered Parent 1 checkpoint passed the publish gate in a
+clean external Python 3.11 virtual environment:
+
+- `python -m pip check`: no broken requirements.
+- Package and CLI import smoke checks: passed.
+- `python -m ruff check --no-cache perfect_playlist tests`: passed.
+- `python -m mypy --no-incremental perfect_playlist tests`: passed with no
+  issues in 23 source files.
+- Offline pytest with `PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS=0`: 70 passed,
+  1 skipped. The one skip was the deliberately disabled credentialed Spotify
+  integration test.
+- Wheel build: passed for `perfect_playlist-0.1.0-py3-none-any.whl`; the wheel
+  was written outside the repository.
+- Credentialed pytest with `PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS=1`: 71
+  passed, 0 skipped. The live test created a temporary public playlist, read
+  back the exact track order and public visibility, and unfollowed the fixture
+  in cleanup.
+
+## Historical Always-On Baseline
 
 On 2026-07-12, the local secrets file set
 `PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS=1`. The full suite reported `41 passed`
@@ -36,9 +61,10 @@ versions:
 5. Snoop Dogg - Peaches N Cream
 6. Usher - U Don't Have to Call
 
-## Completed Repository Work
+## Historical Pre-Parent 1 Repository State
 
-The local package is implemented and verified through commit `700a677`:
+Before the Parent 1 reconciliation, the package was implemented and verified
+through commit `700a677` with these legacy capabilities:
 
 - Exact URI and URL normalization.
 - Deterministic playlist creation with validation-before-write.
@@ -56,8 +82,8 @@ Latest local checks before the live-test attempt:
 - `python -m mypy perfect_playlist`: passed with no issues in 14 source files.
 
 The remote is configured as `origin` pointing to the expected GitHub
-repository. The branch is currently ahead of `origin/main` by eight commits;
-the requested cleanup and push have not happened yet.
+repository. Current publication state is verified from Git rather than this
+historical snapshot.
 
 ## Live Search Results
 
@@ -129,7 +155,7 @@ deprecated `user_playlist_create()` helper to
 13. The package now re-reads persisted visibility and aborts before adding
     tracks if a requested private playlist is public.
 
-## Final Verification
+## Historical Verification
 
 - `python -m pytest`: `39 passed, 1 skipped`; the skipped test is the explicitly
   opt-in live Spotify integration test.
@@ -141,14 +167,16 @@ deprecated `user_playlist_create()` helper to
 - `python -m mypy perfect_playlist`: passed with no issues in 14 source files.
 - Six-track final QA playlist: 6 tracks added, exact order verified.
 - The accidentally public five-track integration fixture was emptied and
+  unfollowed.
 
-## Remaining Cleanup
+## Historical External Cleanup
 
 1. Delete the final QA playlist linked above when it is no longer needed as
    release evidence.
 2. Do not ship private creation as passing until a live create persists
    `public=false` and the full credentialed suite reports zero failures.
-3. Commit and push the reviewed safety and documentation changes when ready.
+
+Parent 2 implementation remains intentionally unstarted at this checkpoint.
 
 ## Important Safety Notes
 

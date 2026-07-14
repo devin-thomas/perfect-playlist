@@ -28,9 +28,9 @@ This project is not trying to replace recommendation systems. It provides the re
 - `verify` compares any two Sources as exact ordered TrackSequences.
 - `export` creates durable YAML, JSON, text, or link output without overwriting files.
 - `search` and `inspect` expose facts without choosing tracks or writing playlists.
-- Repair and natural-language resolve workflows are removed from the next interface.
+- Repair and natural-language resolve workflows are removed from the interface.
 
-The approved next CLI is specified in [the CLI contract](docs/CLI-CONTRACT.md). The repository still contains portions of the earlier grouped command implementation while that contract is being implemented; do not treat the new command examples as shipped until the implementation plan and checks are complete.
+The approved CLI is specified in [the CLI contract](docs/CLI-CONTRACT.md). Parent 1 is complete: the canonical TrackSequence, Source pipeline, authentication behavior, and top-level command shell are in place. Parent 2 has not started, so `build`, `add`, `verify`, and `export` currently fail closed without writing; Parent 3 `search` and `inspect` do the same.
 
 ## Documentation
 
@@ -86,9 +86,10 @@ OAuth tokens are stored outside the repository in the operating-system user cach
 Offline checks:
 
 ```powershell
+$env:PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS='0'
 python -m pytest
 python -m ruff check --no-cache perfect_playlist tests
-python -m mypy perfect_playlist
+python -m mypy --no-incremental perfect_playlist tests
 ```
 
 The live Spotify test is controlled by `resources/spotify-secrets.env`. Set
@@ -103,6 +104,7 @@ attempt. In Codex Desktop, this means setting
 than first waiting for an expected restricted-network failure.
 
 ```powershell
+$env:PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS='1'
 python -m pytest
 ```
 

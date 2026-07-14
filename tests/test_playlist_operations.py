@@ -58,10 +58,8 @@ class PlaylistClient:
         self,
         playlist_id: str,
         items: Sequence[str],
-        position: int | None = None,
     ) -> dict[str, Any]:
-        kwargs = {"position": position}
-        self.added.append({"playlist_id": playlist_id, "items": list(items), "kwargs": kwargs})
+        self.added.append({"playlist_id": playlist_id, "items": list(items)})
         return {"snapshot_id": f"snapshot-{len(self.added)}"}
 
     def playlist_items(
@@ -94,7 +92,6 @@ class FailingAddClient(PlaylistClient):
         self,
         playlist_id: str,
         items: Sequence[str],
-        position: int | None = None,
     ) -> dict[str, Any]:
         raise SpotifyException(500, -1, "server error")
 
@@ -109,19 +106,18 @@ def test_create_playlist_validates_before_write() -> None:
     assert client.added == []
 
 
-def test_create_playlist_adds_and_verifies_exact_order() -> None:
+def test_create_playlist_adds_in_exact_order() -> None:
     uris = [_track_uri(index) for index in range(3)]
     client = PlaylistClient(playlist_items=uris)
 
-    result = create_playlist_from_uris("Exact", uris, public=False, verify=True, client=client)
+    result = create_playlist_from_uris("Exact", uris, public=False, client=client)
 
     assert result.playlist.id == "playlist-123"
     assert result.playlist.snapshot_id == "snapshot-1"
     assert result.added_uris == uris
-    assert result.verified is True
     assert client.created[0]["public"] is False
     assert client.added == [
-        {"playlist_id": "playlist-123", "items": uris, "kwargs": {"position": None}},
+        {"playlist_id": "playlist-123", "items": uris},
     ]
 
 
@@ -133,29 +129,26 @@ def test_private_playlist_aborts_before_adding_when_spotify_persists_it_as_publi
             "Must stay private",
             [_track_uri(1)],
             public=False,
-            verify=False,
             client=client,
         )
 
     assert client.added == []
 
 
-def test_add_items_in_order_chunks_sequentially_and_positions_first_chunk_only() -> None:
+def test_add_items_in_order_chunks_sequentially() -> None:
     uris = [_track_uri(index) for index in range(101)]
     client = PlaylistClient()
 
-    snapshot_id = add_items_in_order("playlist-123", uris, start_position=5, client=client)
+    snapshot_id = add_items_in_order("playlist-123", uris, client=client)
 
     assert snapshot_id == "snapshot-2"
     assert client.added[0] == {
         "playlist_id": "playlist-123",
         "items": uris[:100],
-        "kwargs": {"position": 5},
     }
     assert client.added[1] == {
         "playlist_id": "playlist-123",
         "items": uris[100:],
-        "kwargs": {"position": None},
     }
 
 

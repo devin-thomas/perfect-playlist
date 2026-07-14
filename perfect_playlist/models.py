@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Literal
+from collections.abc import Sequence
+from typing import overload
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -8,10 +9,45 @@ from .errors import InvalidTrackRefError
 from .track_refs import normalize_track_ref
 
 
-class TrackRef(BaseModel):
-    uri: str
-    id: str
-    kind: Literal["track"] = "track"
+class TrackSequence(BaseModel):
+    """An immutable, ordered sequence of canonical Spotify track URIs."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    uris: tuple[str, ...] = Field(default_factory=tuple)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_uris(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            raise TypeError("TrackSequence must be constructed with an 'uris' field")
+
+        raw_uris = data.get("uris", ())
+        if isinstance(raw_uris, (str, bytes)) or not isinstance(raw_uris, Sequence):
+            raise TypeError("uris must be a sequence of Spotify track references")
+
+        normalized: list[str] = []
+        for index, value in enumerate(raw_uris):
+            if not isinstance(value, str):
+                raise TypeError(f"uris[{index}] must be a Spotify track URI or URL")
+            try:
+                normalized.append(normalize_track_ref(value))
+            except InvalidTrackRefError as exc:
+                raise ValueError(f"uris[{index}] must be a Spotify track URI or URL") from exc
+
+        return {**data, "uris": tuple(normalized)}
+
+    def __len__(self) -> int:
+        return len(self.uris)
+
+    @overload
+    def __getitem__(self, index: int) -> str: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> tuple[str, ...]: ...
+
+    def __getitem__(self, index: int | slice) -> str | tuple[str, ...]:
+        return self.uris[index]
 
 
 class TrackSummary(BaseModel):
@@ -35,77 +71,3 @@ class CreatedPlaylist(BaseModel):
 class PlaylistCreateResult(BaseModel):
     playlist: CreatedPlaylist
     added_uris: list[str]
-    verified: bool | None = None
-    warnings: list[str] = Field(default_factory=list)
-
-
-class PlaylistRepairResult(BaseModel):
-    playlist_id: str
-    expected_uris: list[str]
-    actual_uris: list[str]
-    changed: bool
-    applied: bool
-    snapshot_id: str | None = None
-
-
-class PlaylistManifestTrack(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    title: str
-    artist: str
-    uri: str | None = None
-    missing: bool = False
-    needs_review: bool = False
-    confidence: float = 0.0
-    candidate_uris: list[str] = Field(default_factory=list)
-    note: str | None = None
-
-    @model_validator(mode="after")
-    def validate_reference(self) -> PlaylistManifestTrack:
-        if self.missing and self.uri is not None:
-            raise ValueError("cannot include uri when missing: true")
-        if not self.missing and not self.needs_review and self.uri is None:
-            raise ValueError(
-                "must include uri or set missing: true (or set needs_review: true)"
-            )
-        if self.uri is not None:
-            try:
-                self.uri = normalize_track_ref(self.uri)
-            except InvalidTrackRefError as exc:
-                raise ValueError("uri must be a Spotify track URI or URL") from exc
-        return self
-
-
-class PlaylistManifest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    name: str
-    public: bool = False
-    description: str = ""
-    tracks: list[PlaylistManifestTrack]
-
-    @property
-    def uris(self) -> list[str]:
-        """Return only verified track URIs, preserving manifest order."""
-        return [
-            track.uri
-            for track in self.tracks
-            if track.uri is not None and not track.missing and not track.needs_review
-        ]
-
-
-class SetlistInputTrack(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    title: str
-    artist: str
-    note: str | None = None
-
-
-class SetlistInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    name: str
-    public: bool = False
-    description: str = ""
-    tracks: list[SetlistInputTrack]

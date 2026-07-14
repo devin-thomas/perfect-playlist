@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from dotenv import load_dotenv
 
-from perfect_playlist import create_playlist_from_file
+from perfect_playlist import create_playlist_from_uris, read_source
 from perfect_playlist.client import get_spotify_client
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
@@ -22,15 +22,11 @@ def test_create_public_playlist_from_example_and_verify_order() -> None:
     name = f"perfect-playlist integration test - DELETE ME - {timestamp}"
     result = None
     try:
-        result = create_playlist_from_file(
-            name,
-            "examples/paradox-tiny-desk.txt",
-            public=True,
-            verify=True,
-        )
+        sequence = read_source("examples/paradox-tiny-desk.txt")
+        result = create_playlist_from_uris(name, sequence.uris, public=True)
 
         assert result.playlist.url.startswith("https://open.spotify.com/playlist/")
-        assert result.verified is True
+        assert read_source(result.playlist.uri) == sequence
         persisted = get_spotify_client().playlist(result.playlist.id, fields="public")
         assert persisted["public"] is True
     finally:

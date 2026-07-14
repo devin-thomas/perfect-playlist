@@ -7,7 +7,7 @@ import spotipy
 from requests.exceptions import RequestException
 from spotipy.exceptions import SpotifyException, SpotifyOauthError
 
-from .auth import build_auth_manager
+from .auth import authenticate, build_auth_manager, command_is_interactive
 
 SPOTIFY_API_EXCEPTIONS = (SpotifyException, SpotifyOauthError, RequestException)
 
@@ -27,8 +27,10 @@ class PlaylistClient(Protocol):
         self,
         playlist_id: str,
         items: Sequence[str],
-        position: int | None = None,
     ) -> dict[str, Any]: ...
+
+class SourceClient(Protocol):
+    def track(self, track_id: str, market: str | None = None) -> dict[str, Any]: ...
 
     def playlist_items(
         self,
@@ -37,14 +39,6 @@ class PlaylistClient(Protocol):
         limit: int,
         offset: int,
     ) -> dict[str, Any]: ...
-
-    def playlist_replace_items(
-        self,
-        playlist_id: str,
-        items: Sequence[str],
-    ) -> dict[str, Any]: ...
-
-    def current_user_unfollow_playlist(self, playlist_id: str) -> None: ...
 
 
 class TrackLookupClient(Protocol):
@@ -63,10 +57,15 @@ class TrackLookupClient(Protocol):
     ) -> dict[str, Any]: ...
 
 
-class SpotifyClient(PlaylistClient, TrackLookupClient, Protocol):
+class SpotifyClient(PlaylistClient, SourceClient, TrackLookupClient, Protocol):
     def current_user(self) -> dict[str, Any]: ...
 
+    def current_user_unfollow_playlist(self, playlist_id: str) -> None: ...
 
-def get_spotify_client() -> SpotifyClient:
+
+def get_spotify_client(*, interactive: bool | None = None) -> SpotifyClient:
     """Create an authenticated Spotify Web API client."""
-    return cast(SpotifyClient, spotipy.Spotify(auth_manager=build_auth_manager()))
+    allow_interactive = command_is_interactive() if interactive is None else interactive
+    manager = build_auth_manager(open_browser=allow_interactive)
+    authenticate(manager, interactive=allow_interactive)
+    return cast(SpotifyClient, spotipy.Spotify(auth_manager=manager))

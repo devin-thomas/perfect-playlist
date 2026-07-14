@@ -14,20 +14,32 @@ class PlaylistAddError(SpotifyExactError):
     """Raised when adding a track batch fails."""
 
 
-class PlaylistVerificationError(SpotifyExactError):
-    """Raised when playlist order does not match the expected URI order."""
-
-
-class PlaylistRepairError(SpotifyExactError):
-    """Raised when a playlist repair cannot be planned or applied."""
-
-
 class AuthConfigError(SpotifyExactError):
     """Raised when Spotify auth configuration is missing or invalid."""
 
 
-class ManifestError(SpotifyExactError):
-    """Raised when a playlist manifest is malformed or invalid."""
+class SpotifyAuthenticationRequiredError(SpotifyExactError):
+    """Raised when a command needs Spotify authorization but cannot open a browser."""
+
+
+class SourceError(SpotifyExactError):
+    """Raised when a durable TrackSequence Source is malformed or unsupported."""
+
+
+class SourceMalformedError(SourceError):
+    """Raised when a Source reference or document is malformed."""
+
+
+class SourceAccessError(SourceError):
+    """Raised when a referenced Spotify resource cannot be read."""
+
+
+class SourceAuthenticationError(SourceError):
+    """Raised when Spotify authentication is required or rejected."""
+
+
+class SourceSpotifyError(SourceError):
+    """Raised when Spotify fails while resolving a Source."""
 
 
 class SpotifyApiError(SpotifyExactError):

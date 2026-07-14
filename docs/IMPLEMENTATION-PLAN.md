@@ -1,6 +1,6 @@
 # Perfect Playlist Implementation Plan
 
-**Status:** Ready for execution.
+**Status:** Parent 1 complete; Parent 2 not started.
 
 This is the sole active engineering plan. It reconciles the original build plan, the empty private playlist proposal, the completed task notes, the live-test handoff, and the approved CLI contract.
 
@@ -18,9 +18,9 @@ Children are also dependency-chained in coordinate order: `[1.0]` through `[1.6]
 
 ## Baseline
 
-The repository already contains a Python 3.11 package, Typer CLI, Spotipy OAuth, exact track normalization, ordered 100-item writes, search and inspection primitives, YAML models, export and verification code, unit tests, static checks, and an opt-in Spotify integration test.
+Parent 1 is complete. The repository contains a root-level Python 3.11 package, one URI-only TrackSequence, extension-driven and Spotify Source ingestion, interactive/non-interactive authentication, typed Spotify adapter boundaries, and the approved top-level command shell. Superseded grouped commands, repair, resolve, dry-run, position-based add, prefix verification, and metadata-rich manifest workflows have been removed.
 
-The current implementation still exposes superseded grouped commands and concepts, including `playlist create`, prefix verification, repair, resolve, dry-run, position-based add, and metadata-rich manifests. These are migration inputs, not requirements. Reuse sound primitives where they satisfy the contract; remove incompatible public behavior and dead models completely.
+Parent 2 has not started. Its `build`, `add`, `verify`, and `export` command shells are visible but fail closed with exit code `2` without Spotify or filesystem writes. Parent 3 `search` and `inspect` shells follow the same boundary. Existing lower-level playlist and lookup primitives are migration inputs for their assigned future tasks, not shipped implementations of those commands.
 
 ## Credential Decision
 
@@ -44,7 +44,7 @@ Every task owner must:
 5. Credentials live only in gitignored `resources/spotify-secrets.env`. Approved runtime and test code may load it, but agents never directly open, print, inspect, modify, commit, paste into Linear, or duplicate its contents. Use `spotify-secrets.env.example` only to understand variable names.
 6. Store every successfully verified task in a non-empty task-scoped commit before marking it Done or starting its successor. Linear commits use `<TASK_ID>: <issue title>`. Manual agents create the local commit. Ralph agents report Ready to Commit and leave Linear In Progress; the host runner commits, verifies, finalizes Linear, and pushes.
 
-## Parent 1 of 3 - Establish the Canonical Core and CLI Shell
+## Parent 1 of 3 - Establish the Canonical Core and CLI Shell (Complete)
 
 Outcome: one TrackSequence model, one Source pipeline, predictable authentication, and only the approved action-based command surface.
 
@@ -60,7 +60,7 @@ Ordered child tasks:
 
 Parent 1 blocks Parent 2.
 
-## Parent 2 of 3 - Deliver Safe Deterministic Workflows
+## Parent 2 of 3 - Deliver Safe Deterministic Workflows (Not Started)
 
 Outcome: Build, Add, Verify, and Export implement the complete approved contract with preflight safety and post-write verification.
 
@@ -75,7 +75,7 @@ Ordered child tasks:
 
 Parent 2 blocks Parent 3.
 
-## Parent 3 of 3 - Complete Read-Only Tools, Agent Interface, and QA
+## Parent 3 of 3 - Complete Read-Only Tools, Agent Interface, and QA (Not Started)
 
 Outcome: discovery and inspection are agent-friendly, the new contract is comprehensively tested, and the credentialed release gate is honest and reproducible.
 

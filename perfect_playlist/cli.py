@@ -1,72 +1,40 @@
 from __future__ import annotations
 
-import json
-from collections.abc import Sequence
+from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, NoReturn, TypeVar
 
 import typer
 from rich.console import Console
-from rich.table import Table
 
 from .client import SPOTIFY_API_EXCEPTIONS
 from .errors import SpotifyExactError
-from .io import read_manifest, read_uri_lines
-from .models import TrackSummary
-from .playlist import add_items_in_order, create_playlist_from_uris
-from .repair import repair_playlist
-from .resolve import resolve_setlist
-from .search import get_tracks, search_tracks
-from .track_refs import normalize_track_ref
-from .verify import export_playlist_to_file, verify_playlist_prefix
 
-app = typer.Typer(help="Create Spotify playlists from exact track URIs.")
+app = typer.Typer(help="Build deterministic Spotify playlists from exact track Sources.")
 auth_app = typer.Typer(help="Authenticate with Spotify.")
-playlist_app = typer.Typer(help="Create and verify playlists.")
-search_app = typer.Typer(help="Search Spotify without writing playlists.")
-track_app = typer.Typer(help="Inspect exact Spotify tracks.")
-resolve_app = typer.Typer(help="Resolve human-readable setlists into reviewable manifests.")
-
 app.add_typer(auth_app, name="auth")
-app.add_typer(playlist_app, name="playlist")
-app.add_typer(search_app, name="search")
-app.add_typer(track_app, name="track")
-app.add_typer(resolve_app, name="resolve")
-
 console = Console()
+T = TypeVar("T")
 
 
-InputFileOption = typer.Option("--from", exists=True, dir_okay=False)
-ManifestFileOption = typer.Option("--manifest", exists=True, dir_okay=False)
+def _run(action: Callable[[], T]) -> T:
+    """Translate handled domain and Spotify failures to exit code 2."""
+    try:
+        return action()
+    except SpotifyExactError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(2) from exc
+    except SPOTIFY_API_EXCEPTIONS as exc:  # pragma: no cover - external failure boundary.
+        console.print("[red]Spotify request failed.[/red]")
+        raise typer.Exit(2) from exc
 
 
-def _print_track_table(title: str, tracks: Sequence[TrackSummary]) -> None:
-    table = Table(title=title)
-    table.add_column("#", justify="right")
-    table.add_column("Title")
-    table.add_column("Artists")
-    table.add_column("Duration")
-    table.add_column("Explicit")
-    table.add_column("URI")
-    table.add_column("URL")
-
-    for index, track in enumerate(tracks, start=1):
-        duration_ms = track.duration_ms
-        duration = ""
-        if duration_ms is not None:
-            seconds = duration_ms // 1000
-            duration = f"{seconds // 60}:{seconds % 60:02d}"
-        table.add_row(
-            str(index),
-            track.title,
-            ", ".join(track.artists),
-            duration,
-            "yes" if track.explicit else "no",
-            track.uri,
-            track.url,
-        )
-
-    console.print(table)
+def _pending_command(command: str, parent: str) -> NoReturn:
+    console.print(
+        f"[yellow]{command} is not implemented until {parent}. "
+        "No Spotify or filesystem changes were made.[/yellow]"
+    )
+    raise typer.Exit(2)
 
 
 @auth_app.command("login")
@@ -74,247 +42,69 @@ def auth_login() -> None:
     """Authenticate and print the active Spotify account."""
     from .client import get_spotify_client
 
-    try:
-        user = get_spotify_client().current_user()
-    except SpotifyExactError as exc:
-        console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(3) from exc
-    except SPOTIFY_API_EXCEPTIONS as exc:  # pragma: no cover - depends on external auth.
-        console.print("[red]Spotify auth failed. Check local Spotify credentials.[/red]")
-        raise typer.Exit(3) from exc
-
+    user = _run(lambda: get_spotify_client().current_user())
     console.print(f"Authenticated as {user.get('display_name') or user.get('id')}")
 
 
 @auth_app.command("status")
 def auth_status() -> None:
-    """Check whether Spotify auth can reach the current user endpoint."""
-    auth_login()
+    """Check whether Spotify authentication is valid."""
+    from .client import get_spotify_client
+
+    user = _run(lambda: get_spotify_client(interactive=False).current_user())
+    console.print(f"Authenticated as {user.get('display_name') or user.get('id')}")
 
 
-@playlist_app.command("create")
-def playlist_create(
-    name: str = typer.Argument("", help="Playlist name; omitted when using --manifest."),
-    from_file: Annotated[Path | None, InputFileOption] = None,
-    manifest_file: Annotated[Path | None, ManifestFileOption] = None,
-    private: Annotated[
-        bool,
-        typer.Option(
-            "--private",
-            help="Request removal from profile/search and abort if Spotify persists it public.",
-        ),
-    ] = False,
-    public: Annotated[bool, typer.Option("--public", help="Create a public playlist.")] = False,
-    dry_run: Annotated[bool, typer.Option("--dry-run", help="Validate without writing.")] = False,
-    verify: Annotated[bool, typer.Option("--verify/--no-verify")] = True,
+@app.command("build")
+def build(
+    source: str = typer.Argument(..., help="A durable local Source or Spotify reference."),
+    name: Annotated[str | None, typer.Option("--name")] = None,
+    target: Annotated[str | None, typer.Option("--target")] = None,
+    private: Annotated[bool, typer.Option("--private")] = False,
 ) -> None:
-    """Create a playlist from exact track URIs, URLs, or a YAML manifest."""
-    if private and public:
-        console.print("[red]Choose either --private or --public, not both.[/red]")
-        raise typer.Exit(2)
-
-    try:
-        description = ""
-        if from_file is not None and manifest_file is not None:
-            raise SpotifyExactError("Choose either --from or --manifest, not both.")
-        if manifest_file is not None:
-            if name:
-                raise SpotifyExactError("Do not provide NAME when using --manifest.")
-            if private or public:
-                raise SpotifyExactError("Playlist visibility is defined by the manifest.")
-            manifest = read_manifest(manifest_file)
-            pending_review = sum(track.needs_review for track in manifest.tracks)
-            if pending_review:
-                raise SpotifyExactError(
-                    f"{pending_review} track(s) still need review before playlist creation."
-                )
-            name = manifest.name
-            public = manifest.public
-            description = manifest.description
-            uris = manifest.uris
-        else:
-            if not name or from_file is None:
-                raise SpotifyExactError("Provide NAME and --from, or use --manifest.")
-            uris = read_uri_lines(from_file)
-        result = create_playlist_from_uris(
-            name=name,
-            uris=uris,
-            public=public and not private,
-            description=description,
-            dry_run=dry_run,
-            verify=verify,
-        )
-    except SpotifyExactError as exc:
-        console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(2) from exc
-
-    if dry_run:
-        table = Table(title=f"Dry run: {name}")
-        table.add_column("#", justify="right")
-        table.add_column("URI")
-        for index, uri in enumerate(result.added_uris, start=1):
-            table.add_row(str(index), uri)
-        console.print(table)
-        console.print(f"{len(result.added_uris)} tracks validated.")
-        return
-
-    console.print(f"Created playlist: {result.playlist.url}")
-    if result.verified is True:
-        console.print("Verification passed.")
+    """Show the approved Build shell without performing a partial workflow."""
+    _pending_command("build", "Parent 2")
 
 
-@playlist_app.command("add")
-def playlist_add(
-    playlist_id: str,
-    from_file: Annotated[Path, InputFileOption],
-    position: Annotated[int | None, typer.Option("--position", min=0)] = None,
+@app.command("add")
+def add(source: str = typer.Argument(...), target: str = typer.Option(..., "--target")) -> None:
+    """Show the approved Add shell without performing a partial workflow."""
+    _pending_command("add", "Parent 2")
+
+
+@app.command("verify")
+def verify(left: str = typer.Argument(...), right: str = typer.Argument(...)) -> None:
+    """Show the approved Verify shell without partial comparison behavior."""
+    _pending_command("verify", "Parent 2")
+
+
+@app.command("export")
+def export(
+    source: str = typer.Argument(...),
+    out: Annotated[Path | None, typer.Option("--out", dir_okay=False)] = None,
+    links: Annotated[bool, typer.Option("--links")] = False,
 ) -> None:
-    """Add exact tracks to an existing playlist."""
-    try:
-        uris = read_uri_lines(from_file)
-        snapshot_id = add_items_in_order(playlist_id, uris, start_position=position)
-    except SpotifyExactError as exc:
-        console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(2) from exc
-
-    console.print(f"Added {len(uris)} tracks. Snapshot: {snapshot_id}")
+    """Show the approved Export shell without partial filesystem behavior."""
+    _pending_command("export", "Parent 2")
 
 
-@playlist_app.command("verify")
-def playlist_verify(
-    playlist_id: str,
-    from_file: Annotated[Path, InputFileOption],
+@app.command("search")
+def search(
+    query: str = typer.Argument(...),
+    limit: Annotated[int, typer.Option("--limit", min=1, max=10)] = 4,
+    json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    """Verify playlist order against a URI file."""
-    try:
-        uris = read_uri_lines(from_file)
-        verify_playlist_prefix(playlist_id, uris)
-    except SpotifyExactError as exc:
-        console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(5) from exc
-
-    console.print(f"Verification passed for {len(uris)} tracks.")
+    """Show the approved Search shell without starting Parent 3 behavior."""
+    _pending_command("search", "Parent 3")
 
 
-@playlist_app.command("export")
-def playlist_export(
-    playlist_id: str,
-    output_file: Annotated[Path, typer.Option("--out", dir_okay=False)],
+@app.command("inspect")
+def inspect(
+    track_reference: str = typer.Argument(...),
+    json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    """Export an existing playlist's track URIs in playlist order."""
-    try:
-        uris = export_playlist_to_file(playlist_id, output_file)
-    except SpotifyExactError as exc:
-        console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(5) from exc
-
-    console.print(f"Exported {len(uris)} tracks to {output_file}.")
-
-
-@playlist_app.command("repair")
-def playlist_repair(
-    playlist_id: str,
-    from_file: Annotated[Path, InputFileOption],
-    apply: Annotated[
-        bool,
-        typer.Option("--apply", help="Apply the replacement; otherwise only preview it."),
-    ] = False,
-) -> None:
-    """Preview or apply an exact replacement of playlist track order."""
-    try:
-        result = repair_playlist(
-            playlist_id,
-            read_uri_lines(from_file),
-            dry_run=not apply,
-        )
-    except SpotifyExactError as exc:
-        console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(5) from exc
-
-    if not result.changed:
-        console.print("Playlist already matches the requested track order.")
-    elif result.applied:
-        console.print(f"Repaired playlist {playlist_id}.")
-    else:
-        console.print(
-            f"Repair preview: {len(result.actual_uris)} existing tracks would be replaced "
-            f"with {len(result.expected_uris)} requested tracks."
-        )
-
-
-@search_app.command("track")
-def search_track(
-    query: str,
-    limit: Annotated[int, typer.Option("--limit", min=1, max=50)] = 10,
-    market: Annotated[str | None, typer.Option("--market")] = "US",
-    json_output: Annotated[
-        bool, typer.Option("--json", help="Print machine-readable JSON.")
-    ] = False,
-) -> None:
-    """Search Spotify track candidates."""
-    try:
-        tracks = search_tracks(query, limit=limit, market=market)
-    except SpotifyExactError as exc:
-        console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(4) from exc
-
-    if json_output:
-        console.print(json.dumps([track.model_dump() for track in tracks], indent=2))
-        return
-
-    _print_track_table("Track search results", tracks)
-
-
-@track_app.command("show")
-def track_show(
-    uri_or_url: str,
-    market: Annotated[str | None, typer.Option("--market")] = "US",
-    json_output: Annotated[
-        bool, typer.Option("--json", help="Print machine-readable JSON.")
-    ] = False,
-) -> None:
-    """Normalize an exact track reference and show Spotify metadata."""
-    try:
-        uri = normalize_track_ref(uri_or_url)
-        tracks = get_tracks([uri], market=market)
-    except SpotifyExactError as exc:
-        console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(2) from exc
-
-    if not tracks:
-        console.print(f"[red]Spotify did not return metadata for {uri}.[/red]")
-        raise typer.Exit(4)
-
-    if json_output:
-        console.print(json.dumps(tracks[0].model_dump(), indent=2))
-        return
-
-    _print_track_table("Track", tracks)
-
-
-@resolve_app.command("setlist")
-def resolve_setlist_command(
-    setlist_file: Path,
-    output_file: Annotated[Path, typer.Option("--out", dir_okay=False)],
-    json_output: Annotated[
-        bool, typer.Option("--json", help="Print the resolved manifest as JSON.")
-    ] = False,
-) -> None:
-    """Search a setlist and write a manifest requiring review before creation."""
-    try:
-        manifest = resolve_setlist(setlist_file, output_file)
-    except SpotifyExactError as exc:
-        console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(4) from exc
-
-    review_count = sum(track.needs_review for track in manifest.tracks)
-    if json_output:
-        console.print(json.dumps(manifest.model_dump(), indent=2))
-    else:
-        console.print(
-            f"Wrote {len(manifest.tracks)} tracks to {output_file}; "
-            f"{review_count} need review before playlist creation."
-        )
+    """Show the approved Inspect shell without starting Parent 3 behavior."""
+    _pending_command("inspect", "Parent 3")
 
 
 if __name__ == "__main__":
