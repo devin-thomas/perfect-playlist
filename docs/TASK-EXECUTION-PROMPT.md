@@ -3,6 +3,8 @@
 ```text
 Complete exactly one next task from the Perfect Playlist implementation plan.
 
+Invocation rule: If this prompt is referenced or supplied without additional task text, treat that as the user's request to execute this workflow. Do not ask for a follow-up instruction or task ID; determine the next task from Linear.
+
 Repository: current repository root (expected local path: C:\dev\personal\spotify-playlist-modify)
 Spotify secrets file: resources/spotify-secrets.env
 Linear project: Perfect Playlist CLI
