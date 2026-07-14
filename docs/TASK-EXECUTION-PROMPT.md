@@ -24,8 +24,9 @@ Before changing anything:
    - docs/PRODUCT-AND-LANGUAGE.md
    - docs/CLI-CONTRACT.md
    - docs/IMPLEMENTATION-PLAN.md
+   - docs/GIT-WORKFLOW.md
    - docs/LIVE-QA.md
-4. Inspect git status. The worktree may contain intentional changes from earlier tasks. Preserve them, do not revert them, and do not overwrite unrelated work.
+4. Record the starting commit and `git status --short`. The worktree may contain intentional changes from earlier tasks. Treat every path already dirty as protected: preserve it, do not stage it, do not revert it, and do not overwrite it.
 5. Use Linear to read M-115, M-116, M-117, M-27, and all children of the three parent issues, including each issue's status and blockers.
 6. Retry a transient Linear read or write failure up to three total attempts with a short delay. If Linear remains unavailable, do not guess or claim completion.
 7. If the OAuth Linear server requires authentication or cannot initialize, report that exact connection problem. Do not read the private secrets file or attempt API-key authentication from this manual Desktop workflow.
@@ -48,8 +49,9 @@ Authority order:
 2. docs/CLI-CONTRACT.md defines user-visible behavior.
 3. docs/PRODUCT-AND-LANGUAGE.md defines product intent and canonical terminology.
 4. docs/IMPLEMENTATION-PLAN.md defines sequencing and boundaries.
-5. docs/LIVE-QA.md provides historical evidence and safety constraints.
-6. Existing code is the implementation baseline, not authority for superseded behavior.
+5. AGENTS.md and docs/GIT-WORKFLOW.md define commit ownership and completion.
+6. docs/LIVE-QA.md provides historical evidence and safety constraints.
+7. Existing code is the implementation baseline, not authority for superseded behavior.
 
 Execution rules:
 
@@ -60,10 +62,12 @@ Execution rules:
 - Do not add compatibility aliases, transitional commands, speculative features, unrelated refactors, or work assigned to later issues.
 - Add or update focused tests for behavior changed by this task.
 - Run task-specific tests first, then every applicable repository check.
+- Keep offline tests and other local checks in the default sandbox. For a command known in advance to require external HTTPS - including a credentialed Spotify integration test, Spotify OAuth token exchange, dependency download, or an authorized Git/GitHub/Linear CLI or API operation - request network-enabled execution on the first attempt. In Codex Desktop, set `sandbox_permissions: "require_escalated"` on that first shell call, include a concise approval justification, and use a narrowly scoped reusable `prefix_rule` when appropriate. Do not run a predictably blocked restricted-network probe first. Invoke configured MCP or app tools directly; retry only after an unexpected failure and only when permissions or external state will materially differ.
+- Use a fresh pytest temporary directory outside the repository for isolated or retried tests when the repository `.pytest-tmp` directory is locked or permission-denied. Do not delete or modify repository fixtures, caches, or secrets to work around the lock.
 - Runtime and tests may load repository-relative `resources/spotify-secrets.env` through approved code paths. Never directly open, print, inspect, modify, commit, paste into Linear, or duplicate its contents. Use `spotify-secrets.env.example` only to understand variable names.
 - `LINEAR_API_KEY` is reserved for the separate Ralph host/proxy path and is not used by this OAuth Desktop workflow. Never attempt to retrieve or expose it.
 - Do not claim completion if an applicable check fails or an expected test is skipped.
-- Follow the repository's Git instructions. Do not rewrite history, force-push, modify remotes, or stage unrelated files. Do not commit or push unless the user or repository instructions authorize it; if authorized, publish only after the completion gate passes.
+- A manual/Desktop task is not Complete until its task-owned changes are committed. After every non-Git completion condition passes, stage only the exact paths changed for TASK_ID, run `git diff --cached --check`, inspect the staged name-status and diff, verify no secret, generated, unrelated, or pre-existing dirty path is included, and create a non-empty commit named `<TASK_ID>: <issue title>`. Do not use `git add .`, `git add -A`, amend, or broad cleanup commands. If staging, validation, or commit fails, leave TASK_ID In Progress, report `Status: Incomplete`, and do not mark its parent Done. Do not push unless the user or repository publishing instructions authorize it.
 
 Completion gate:
 
@@ -74,7 +78,8 @@ Mark TASK_ID Done only when:
 - all applicable full checks pass;
 - no unintended test is skipped;
 - documentation directly affected by this task is accurate; and
-- git status contains no accidental secret, cache, fixture, or unrelated generated file.
+- git status contains no accidental secret, cache, fixture, or unrelated generated file; and
+- a verified non-empty task commit exists at HEAD with the required subject and exact task-owned path set.
 
 If a test fails or is skipped, report that **BOLDLY AND CLEARLY**, explain the reason, try to resolve it, and leave TASK_ID incomplete if full verification is still missing.
 
@@ -90,16 +95,18 @@ At the end:
 
 1. Record your end time in America/Chicago.
 2. Calculate and report total whole minutes worked.
-3. Update TASK_ID in Linear with:
+3. If every non-Git completion condition passes, stage, inspect, commit, and verify the exact task-owned diff as required above. Do this before marking TASK_ID Done. If any non-Git condition fails, do not create a completion commit.
+4. Update TASK_ID in Linear with:
    - start time;
    - end time;
    - minutes worked;
    - concise implementation summary;
    - files materially changed;
    - exact tests/checks run and results;
+   - commit SHA and subject when Complete;
    - any failures, skips, residual risks, or blockers.
-4. Apply the completion gate and parent bookkeeping above.
-5. Report back using this structure:
+5. Apply the completion gate and parent bookkeeping above. Never set TASK_ID or its parent to Done before the commit succeeds.
+6. Report back using this structure:
 
 Task: TASK_ID — <title>
 Status: Complete | Incomplete | Blocked
@@ -110,6 +117,7 @@ Status: Review Required
 Start: <America/Chicago timestamp>
 End: <America/Chicago timestamp>
 Minutes worked: <whole number>
+Commit: <SHA and subject, or "Not created - status is Incomplete/Blocked/Review Required">
 
 Implemented:
 - <concise outcomes>
@@ -132,6 +140,6 @@ Failures, skipped tests, or residual risks:
 Do not start another task after reporting.
 ```
 
-## Initial selection
+## Selection invariant
 
-With the current Linear state, the algorithm selects `[1.0] M-135`. The unchanged selection process then continues through `[1.1] M-118` and `[3.6]`. It stops with `Review Required`; it never starts M-27.
+No current child is hard-coded in this prompt. Resolve the next task from authoritative Linear state on every run. Keep completed issues Done, do not infer that a successor is In Progress from repository dirt, and stop with `Review Required` rather than starting M-27.

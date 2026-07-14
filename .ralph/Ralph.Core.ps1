@@ -6,6 +6,7 @@ $script:RalphRepositoryRoot = Split-Path -Parent $PSScriptRoot
 $script:RalphConfig = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot "config.json") | ConvertFrom-Json
 $script:RalphStateDirectory = Join-Path $PSScriptRoot "state"
 $script:RalphLogDirectory = Join-Path $PSScriptRoot "logs"
+$script:RalphDisabledHooksDirectory = Join-Path ([System.IO.Path]::GetTempPath()) "perfect-playlist-ralph-disabled-hooks-$PID"
 $script:RalphPromptPath = Join-Path $PSScriptRoot "TASK-EXECUTION-PROMPT.md"
 $script:RalphLockPath = Join-Path $script:RalphStateDirectory "ralph.lock.json"
 $script:RalphLatestStatePath = Join-Path $script:RalphStateDirectory "latest-run.json"
@@ -37,7 +38,11 @@ function Invoke-RalphGit
         [switch]$AllowFailure
     )
 
-    $output = @(& git @Arguments 2>&1)
+    $output = @(& git `
+        -c "core.hooksPath=$script:RalphDisabledHooksDirectory" `
+        -c "core.fsmonitor=false" `
+        -C $script:RalphRepositoryRoot `
+        @Arguments 2>&1)
     $exitCode = $LASTEXITCODE
 
     if ($exitCode -ne 0 -and -not $AllowFailure)
@@ -50,6 +55,50 @@ function Invoke-RalphGit
         ExitCode = $exitCode
         Output = $output
         Text = ($output -join [Environment]::NewLine).Trim()
+    }
+}
+
+function Invoke-RalphGitBytes
+{
+    param([Parameter(Mandatory)][string[]]$Arguments)
+
+    $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = "git"
+    $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $startInfo.CreateNoWindow = $true
+
+    foreach ($argument in @(
+        "-c", "core.hooksPath=$script:RalphDisabledHooksDirectory",
+        "-c", "core.fsmonitor=false",
+        "-C", $script:RalphRepositoryRoot
+    ) + $Arguments)
+    {
+        [void]$startInfo.ArgumentList.Add($argument)
+    }
+
+    $process = [System.Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
+    $memory = [System.IO.MemoryStream]::new()
+    try
+    {
+        [void]$process.Start()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        $process.StandardOutput.BaseStream.CopyTo($memory)
+        $process.WaitForExit()
+        $stderr = $stderrTask.GetAwaiter().GetResult().Trim()
+        if ($process.ExitCode -ne 0)
+        {
+            throw "git $($Arguments -join ' ') failed with exit code $($process.ExitCode).`n$stderr"
+        }
+
+        return [pscustomobject]@{ Bytes = $memory.ToArray() }
+    }
+    finally
+    {
+        $memory.Dispose()
+        $process.Dispose()
     }
 }
 
@@ -83,6 +132,7 @@ function Initialize-RalphDirectories
 {
     [void](New-Item -ItemType Directory -Force -Path $script:RalphStateDirectory)
     [void](New-Item -ItemType Directory -Force -Path $script:RalphLogDirectory)
+    [void](New-Item -ItemType Directory -Force -Path $script:RalphDisabledHooksDirectory)
 }
 
 function Assert-RalphSecretFileSafety
@@ -172,6 +222,7 @@ function Enter-RalphLock
 function Exit-RalphLock
 {
     Remove-Item -Force -ErrorAction SilentlyContinue -LiteralPath $script:RalphLockPath
+    Remove-Item -Force -ErrorAction SilentlyContinue -LiteralPath $script:RalphDisabledHooksDirectory
 }
 
 function Get-RalphGitStatusEntries
@@ -230,7 +281,8 @@ function Get-RalphPathState
 {
     param([Parameter(Mandatory)][string]$RelativePath)
 
-    $fullPath = Join-Path $script:RalphRepositoryRoot $RelativePath
+    $normalized = ConvertTo-RalphGitPath -RelativePath $RelativePath
+    $fullPath = Join-Path $script:RalphRepositoryRoot $normalized
     if (-not (Test-Path -LiteralPath $fullPath))
     {
         return "MISSING"
@@ -302,6 +354,51 @@ function Get-RalphWorkspaceFingerprint
     return [Convert]::ToHexString($hashBytes)
 }
 
+function Get-RalphGitControlFingerprint
+{
+    $gitDirectoryResult = Invoke-RalphGit -Arguments @("rev-parse", "--git-dir")
+    $gitDirectory = $gitDirectoryResult.Text
+    if (-not [System.IO.Path]::IsPathRooted($gitDirectory))
+    {
+        $gitDirectory = Join-Path $script:RalphRepositoryRoot $gitDirectory
+    }
+    $gitDirectory = [System.IO.Path]::GetFullPath($gitDirectory)
+
+    $records = [System.Collections.Generic.List[string]]::new()
+    $config = Invoke-RalphGit -Arguments @("config", "--local", "--list", "--show-origin", "--null") -AllowFailure
+    $records.Add("config|$($config.ExitCode)|$($config.Text)")
+
+    foreach ($relativePath in @("config", "config.worktree", "info/attributes"))
+    {
+        $path = Join-Path $gitDirectory $relativePath
+        if (Test-Path -LiteralPath $path -PathType Leaf)
+        {
+            $records.Add("$relativePath|$((Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash)")
+        }
+        else
+        {
+            $records.Add("$relativePath|MISSING")
+        }
+    }
+
+    $hooksDirectory = Join-Path $gitDirectory "hooks"
+    if (Test-Path -LiteralPath $hooksDirectory -PathType Container)
+    {
+        foreach ($hook in Get-ChildItem -Force -File -Recurse -LiteralPath $hooksDirectory | Sort-Object FullName)
+        {
+            $relativeHook = [System.IO.Path]::GetRelativePath($hooksDirectory, $hook.FullName).Replace('\', '/')
+            $records.Add("hooks/$relativeHook|$((Get-FileHash -Algorithm SHA256 -LiteralPath $hook.FullName).Hash)")
+        }
+    }
+    else
+    {
+        $records.Add("hooks|MISSING")
+    }
+
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes(($records -join "`n"))
+    return [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($bytes))
+}
+
 function Get-RalphSecretSnapshot
 {
     if (Test-Path -LiteralPath $script:RalphSecretPath -PathType Leaf)
@@ -369,6 +466,7 @@ function New-RalphAttemptSnapshot
         OriginUrl = (Invoke-RalphGit -Arguments @("remote", "get-url", "origin")).Text
         Status = ((Get-RalphGitStatusEntries | ForEach-Object Raw) -join "`n")
         WorkspaceFingerprint = Get-RalphWorkspaceFingerprint
+        GitControlFingerprint = Get-RalphGitControlFingerprint
         PreexistingPaths = Get-RalphPreexistingPathStates
         Secret = Get-RalphSecretSnapshot
     }
@@ -406,6 +504,11 @@ function Get-RalphAttemptChangeReasons
     if ((Get-RalphWorkspaceFingerprint) -ne $Snapshot.WorkspaceFingerprint)
     {
         $reasons.Add("workspace files changed")
+    }
+
+    if ((Get-RalphGitControlFingerprint) -ne $Snapshot.GitControlFingerprint)
+    {
+        $reasons.Add("Git configuration or hooks changed")
     }
 
     return $reasons
@@ -635,13 +738,13 @@ function Get-RalphBoundedPrompt
     $markerInstructions = @'
 
 Bounded Ralph controller requirement:
-After the complete human-readable report, output exactly one additional line containing exactly one of these markers:
-<RALPH_STATUS>COMPLETE</RALPH_STATUS>
+After the canonical RALPH_CHANGED_PATHS line, output exactly one additional line containing exactly one of these markers:
+<RALPH_STATUS>READY_TO_COMMIT</RALPH_STATUS>
 <RALPH_STATUS>INCOMPLETE</RALPH_STATUS>
 <RALPH_STATUS>BLOCKED</RALPH_STATUS>
 <RALPH_STATUS>REVIEW_REQUIRED</RALPH_STATUS>
 
-Use COMPLETE only when the selected implementation child is genuinely complete and its human-readable status is Complete.
+Use READY_TO_COMMIT only when the selected implementation child passes the readiness gate and its human-readable status is Ready to Commit.
 Use INCOMPLETE when implementation or verification is incomplete.
 Use BLOCKED when a blocker or inconsistent state prevents work.
 Use REVIEW_REQUIRED only when all authorized implementation children are Done and M-27 is the next remaining work.
@@ -654,7 +757,7 @@ function Get-RalphBoundedStatus
 {
     param([Parameter(Mandatory)][string]$FinalMessage)
 
-    $matches = [regex]::Matches($FinalMessage, '<RALPH_STATUS>(COMPLETE|INCOMPLETE|BLOCKED|REVIEW_REQUIRED)</RALPH_STATUS>')
+    $matches = [regex]::Matches($FinalMessage, '<RALPH_STATUS>(READY_TO_COMMIT|INCOMPLETE|BLOCKED|REVIEW_REQUIRED)</RALPH_STATUS>')
     if ($matches.Count -ne 1)
     {
         return "MALFORMED"
@@ -666,14 +769,14 @@ function Get-RalphOnceStatus
 {
     param([Parameter(Mandatory)][string]$FinalMessage)
 
-    $matches = [regex]::Matches($FinalMessage, '(?m)^Status:\s*(Complete|Incomplete|Blocked|Review Required)\s*$')
+    $matches = [regex]::Matches($FinalMessage, '(?m)^Status:\s*(Ready to Commit|Incomplete|Blocked|Review Required)\s*$')
     if ($matches.Count -ne 1)
     {
         return "MALFORMED"
     }
 
     $value = $matches[0].Groups[1].Value
-    if ($value -eq "Complete") { return "COMPLETE" }
+    if ($value -eq "Ready to Commit") { return "READY_TO_COMMIT" }
     if ($value -eq "Incomplete") { return "INCOMPLETE" }
     if ($value -eq "Blocked") { return "BLOCKED" }
     if ($value -eq "Review Required") { return "REVIEW_REQUIRED" }
@@ -684,11 +787,13 @@ function Get-RalphTaskIdentity
 {
     param([Parameter(Mandatory)][string]$FinalMessage)
 
-    $match = [regex]::Match($FinalMessage, '(?m)^Task:\s*(M-\d+)\s*(?:—|-)\s*(.+?)\s*$')
-    if (-not $match.Success)
+    $matches = [regex]::Matches($FinalMessage, '(?m)^Task:\s*(M-\d+)\s*(?:—|-)\s*(.+?)\s*$')
+    if ($matches.Count -ne 1)
     {
         return $null
     }
+
+    $match = $matches[0]
 
     [pscustomobject]@{
         Id = $match.Groups[1].Value
@@ -696,11 +801,74 @@ function Get-RalphTaskIdentity
     }
 }
 
+function Get-RalphReportedChangedPaths
+{
+    param([Parameter(Mandatory)][string]$FinalMessage)
+
+    $matches = [regex]::Matches($FinalMessage, '(?m)^<RALPH_CHANGED_PATHS>(\[.*\])</RALPH_CHANGED_PATHS>\s*$')
+    if ($matches.Count -ne 1)
+    {
+        throw "Ready-to-commit output must contain exactly one RALPH_CHANGED_PATHS JSON marker."
+    }
+
+    try
+    {
+        $decoded = @($matches[0].Groups[1].Value | ConvertFrom-Json -ErrorAction Stop)
+    }
+    catch
+    {
+        throw "RALPH_CHANGED_PATHS must contain a valid JSON array."
+    }
+
+    $paths = [System.Collections.Generic.List[string]]::new()
+    $seen = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($item in $decoded)
+    {
+        if ($item -isnot [string])
+        {
+            throw "Every RALPH_CHANGED_PATHS item must be a string."
+        }
+
+        $path = ConvertTo-RalphGitPath -RelativePath ([string]$item)
+        if (-not $seen.Add($path))
+        {
+            throw "RALPH_CHANGED_PATHS contains duplicate path '$path'."
+        }
+        $paths.Add($path)
+    }
+
+    return $paths.ToArray()
+}
+
+function ConvertTo-RalphGitPath
+{
+    param([Parameter(Mandatory)][string]$RelativePath)
+
+    $normalized = $RelativePath.Replace('\', '/')
+    while ($normalized.StartsWith("./", [StringComparison]::Ordinal))
+    {
+        $normalized = $normalized.Substring(2)
+    }
+    $wasRooted = [System.IO.Path]::IsPathRooted($normalized)
+    $normalized = $normalized.TrimStart('/')
+
+    if (
+        [string]::IsNullOrWhiteSpace($normalized) -or
+        $wasRooted -or
+        $normalized -match '(^|/)\.\.($|/)'
+    )
+    {
+        throw "Unsafe repository-relative Git path '$RelativePath'."
+    }
+
+    return $normalized
+}
+
 function Test-RalphSensitiveCommitPath
 {
     param([Parameter(Mandatory)][string]$RelativePath)
 
-    $normalized = $RelativePath.Replace('\', '/').TrimStart([char[]]@('.', '/'))
+    $normalized = ConvertTo-RalphGitPath -RelativePath $RelativePath
     $leaf = [System.IO.Path]::GetFileName($normalized)
     $lower = $normalized.ToLowerInvariant()
     $leafLower = $leaf.ToLowerInvariant()
@@ -715,7 +883,10 @@ function Test-RalphSensitiveCommitPath
 
 function Get-RalphSafeIterationPaths
 {
-    param([Parameter(Mandatory)]$Snapshot)
+    param(
+        [Parameter(Mandatory)]$Snapshot,
+        [Parameter(Mandatory)][string[]]$ReportedPaths
+    )
 
     $currentHead = (Invoke-RalphGit -Arguments @("rev-parse", "HEAD")).Text
     if ($currentHead -ne $Snapshot.Head)
@@ -732,6 +903,11 @@ function Get-RalphSafeIterationPaths
     if ($originUrl -ne $Snapshot.OriginUrl)
     {
         throw "Codex changed the origin remote. Ralph will not use the modified remote."
+    }
+
+    if ((Get-RalphGitControlFingerprint) -ne $Snapshot.GitControlFingerprint)
+    {
+        throw "Codex changed repository-local Git configuration, attributes, or hooks."
     }
 
     $index = Invoke-RalphGit -Arguments @("diff", "--cached", "--quiet", "--exit-code") -AllowFailure
@@ -777,55 +953,374 @@ function Get-RalphSafeIterationPaths
         }
     }
 
-    return $paths.ToArray()
+    $safePaths = $paths.ToArray()
+    Assert-RalphPathSetMatches -ExpectedPaths $ReportedPaths -ActualPaths $safePaths -Context "Reported task manifest"
+    return $safePaths
 }
 
-function Invoke-RalphCommitAndPush
+function Assert-RalphPathSetMatches
+{
+    param(
+        [Parameter(Mandatory)][string[]]$ExpectedPaths,
+        [Parameter(Mandatory)][string[]]$ActualPaths,
+        [Parameter(Mandatory)][string]$Context
+    )
+
+    $expected = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($path in $ExpectedPaths)
+    {
+        [void]$expected.Add((ConvertTo-RalphGitPath -RelativePath $path))
+    }
+
+    $actual = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($path in $ActualPaths)
+    {
+        [void]$actual.Add((ConvertTo-RalphGitPath -RelativePath $path))
+    }
+
+    $matches = $expected.Count -eq $actual.Count
+    if ($matches)
+    {
+        foreach ($path in $expected)
+        {
+            if (-not $actual.Contains($path))
+            {
+                $matches = $false
+                break
+            }
+        }
+    }
+
+    if (-not $matches)
+    {
+        $expectedText = (@($expected) | Sort-Object) -join ", "
+        $actualText = (@($actual) | Sort-Object) -join ", "
+        throw "$Context path mismatch. Expected [$expectedText]; actual [$actualText]."
+    }
+}
+
+function Assert-RalphStagedCommitCandidate
+{
+    param(
+        [Parameter(Mandatory)][string[]]$ExpectedPaths,
+        [Parameter(Mandatory)]$Snapshot
+    )
+
+    $staged = Invoke-RalphGit -Arguments @("-c", "core.quotepath=false", "diff", "--cached", "--name-only", "--diff-filter=ACDMRTUXB")
+    $stagedPaths = @($staged.Output | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($stagedPaths.Count -eq 0)
+    {
+        throw "No changes were staged for the completed task."
+    }
+
+    Assert-RalphPathSetMatches -ExpectedPaths $ExpectedPaths -ActualPaths $stagedPaths -Context "Staged commit"
+
+    foreach ($stagedPath in $stagedPaths)
+    {
+        if (Test-RalphSensitiveCommitPath -RelativePath $stagedPath)
+        {
+            throw "A sensitive path reached the staging area: '$stagedPath'."
+        }
+    }
+
+    $diffCheck = Invoke-RalphGit -Arguments @("diff", "--cached", "--check") -AllowFailure
+    if ($diffCheck.ExitCode -ne 0)
+    {
+        throw "The staged diff failed git diff --cached --check.`n$($diffCheck.Text)"
+    }
+
+    $preexisting = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($path in $Snapshot.PreexistingPaths.Keys)
+    {
+        [void]$preexisting.Add((ConvertTo-RalphGitPath -RelativePath ([string]$path)))
+    }
+
+    foreach ($entry in Get-RalphGitStatusEntries)
+    {
+        $path = ConvertTo-RalphGitPath -RelativePath $entry.Path
+        if ($entry.WorkTree -ne ' ' -and -not $preexisting.Contains($path))
+        {
+            throw "Task-owned path '$($entry.Path)' still has unstaged changes after exact-path staging."
+        }
+    }
+}
+
+function Assert-RalphNoActiveContentFilters
+{
+    param([Parameter(Mandatory)][string[]]$Paths)
+
+    $attributes = Invoke-RalphGit -Arguments (@("check-attr", "filter", "--") + $Paths)
+    foreach ($line in $attributes.Output)
+    {
+        if ($line -notmatch ': filter: (?:unspecified|unset)\s*$')
+        {
+            throw "Ralph refused to stage a path with an active Git content filter."
+        }
+    }
+}
+
+function Get-RalphStagedBlob
+{
+    param([Parameter(Mandatory)][string]$RelativePath)
+
+    $path = ConvertTo-RalphGitPath -RelativePath $RelativePath
+    $entry = Invoke-RalphGit -Arguments @("ls-files", "--stage", "--", $path)
+    $lines = @($entry.Output | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($lines.Count -eq 0)
+    {
+        return [pscustomobject]@{ Exists = $false; Bytes = [byte[]]@() }
+    }
+    if ($lines.Count -ne 1 -or $lines[0] -notmatch '^([0-9]{6}) ([0-9a-fA-F]{40,64}) 0\s')
+    {
+        throw "Unable to resolve one stage-zero Git blob for '$path'."
+    }
+
+    $mode = $Matches[1]
+    $objectId = $Matches[2]
+    if ($mode -notin @("100644", "100755"))
+    {
+        throw "Ralph refuses automatic commits containing non-regular Git entry '$path' (mode $mode)."
+    }
+
+    $blob = Invoke-RalphGitBytes -Arguments @("cat-file", "blob", $objectId)
+    return [pscustomobject]@{ Exists = $true; Bytes = [byte[]]$blob.Bytes }
+}
+
+function ConvertFrom-RalphStagedTextBlob
+{
+    param(
+        [Parameter(Mandatory)][AllowEmptyCollection()][byte[]]$Bytes,
+        [Parameter(Mandatory)][string]$RelativePath
+    )
+
+    foreach ($value in $Bytes)
+    {
+        if (($value -lt 0x20 -and $value -notin @(0x09, 0x0A, 0x0D)) -or $value -eq 0x7F)
+        {
+            throw "Ralph refuses automatic commits containing non-text bytes in '$RelativePath'."
+        }
+    }
+
+    try
+    {
+        $strictUtf8 = [System.Text.UTF8Encoding]::new($false, $true)
+        return $strictUtf8.GetString($Bytes)
+    }
+    catch [System.Text.DecoderFallbackException]
+    {
+        throw "Ralph refuses automatic commits containing non-UTF-8 bytes in '$RelativePath'."
+    }
+}
+
+function Assert-RalphStagedContentSafe
+{
+    param([Parameter(Mandatory)][string[]]$Paths)
+
+    $numstat = Invoke-RalphGit -Arguments @("diff", "--cached", "--numstat", "--no-ext-diff")
+    foreach ($line in $numstat.Output)
+    {
+        if ($line -match '^-\s+-\s+')
+        {
+            throw "Ralph refuses automatic commits containing binary file changes."
+        }
+    }
+
+    foreach ($path in $Paths)
+    {
+        $blob = Get-RalphStagedBlob -RelativePath $path
+        if (-not $blob.Exists)
+        {
+            continue
+        }
+
+        $blobText = ConvertFrom-RalphStagedTextBlob -Bytes $blob.Bytes -RelativePath $path
+        foreach ($secret in Get-RalphKnownSecretValues)
+        {
+            if ($blobText.Contains($secret, [StringComparison]::Ordinal))
+            {
+                throw "Ralph detected a known secret value in staged file '$path'. The value was not logged."
+            }
+        }
+    }
+
+    $diff = Invoke-RalphGit -Arguments @("diff", "--cached", "--no-ext-diff", "--no-color", "--unified=0")
+    $text = $diff.Text
+
+    foreach ($secret in Get-RalphKnownSecretValues)
+    {
+        if ($text.Contains($secret, [StringComparison]::Ordinal))
+        {
+            throw "Ralph detected a known secret value in the staged diff. The value was not logged."
+        }
+    }
+
+    foreach ($line in $diff.Output)
+    {
+        if (-not $line.StartsWith('+') -or $line.StartsWith('+++'))
+        {
+            continue
+        }
+
+        if ($line -match '-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----')
+        {
+            throw "Ralph detected private-key material in the staged diff."
+        }
+
+        if ($line -match '(?i)(?:SPOTIPY_CLIENT_SECRET|SPOTIFY_REFRESH_TOKEN|LINEAR_API_KEY|ACCESS_TOKEN|CLIENT_SECRET)\s*[:=]\s*["'']?([^"''\s#]+)')
+        {
+            $candidate = $Matches[1]
+            if (
+                $candidate.Length -ge 8 -and
+                $candidate -notmatch '^(?:your_|example|placeholder|<|\$\{)'
+            )
+            {
+                throw "Ralph detected credential-shaped content in the staged diff."
+            }
+        }
+
+        if ($line -match '(?i)Bearer\s+[A-Za-z0-9._~+/-]{20,}')
+        {
+            throw "Ralph detected bearer-token-shaped content in the staged diff."
+        }
+    }
+}
+
+function Assert-RalphPostCommitState
+{
+    param(
+        [Parameter(Mandatory)]$Snapshot,
+        [Parameter(Mandatory)][string[]]$ExpectedPaths,
+        [Parameter(Mandatory)][string]$PreviousHead,
+        [Parameter(Mandatory)][string]$Commit,
+        [Parameter(Mandatory)][string]$CommitMessage,
+        [Parameter(Mandatory)][string]$StagedTree
+    )
+
+    if ($Commit -eq $PreviousHead)
+    {
+        throw "git commit did not advance HEAD."
+    }
+
+    $parent = (Invoke-RalphGit -Arguments @("rev-parse", "$Commit^" )).Text
+    if ($parent -ne $PreviousHead)
+    {
+        throw "The automatic commit is not a single direct child of the validated task snapshot."
+    }
+
+    $subject = (Invoke-RalphGit -Arguments @("show", "-s", "--format=%s", $Commit)).Text
+    if ($subject -ne $CommitMessage)
+    {
+        throw "The automatic commit subject does not match '$CommitMessage'."
+    }
+
+    $commitTree = (Invoke-RalphGit -Arguments @("rev-parse", "$Commit^{tree}")).Text
+    if ($commitTree -ne $StagedTree)
+    {
+        throw "The committed tree does not match the tree validated before git commit."
+    }
+
+    $committed = Invoke-RalphGit -Arguments @("-c", "core.quotepath=false", "diff", "--no-ext-diff", "--name-only", "--diff-filter=ACDMRTUXB", $PreviousHead, $Commit)
+    $committedPaths = @($committed.Output | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    Assert-RalphPathSetMatches -ExpectedPaths $ExpectedPaths -ActualPaths $committedPaths -Context "Created commit"
+
+    $index = Invoke-RalphGit -Arguments @("diff", "--cached", "--quiet", "--exit-code") -AllowFailure
+    if ($index.ExitCode -ne 0)
+    {
+        throw "The Git index is not clean after the automatic commit."
+    }
+
+    $preexisting = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($path in $Snapshot.PreexistingPaths.Keys)
+    {
+        $before = $Snapshot.PreexistingPaths[$path]
+        $after = Get-RalphPathState -RelativePath $path
+        if ($before -ne $after)
+        {
+            throw "The commit workflow changed pre-existing dirty path '$path'."
+        }
+        [void]$preexisting.Add((ConvertTo-RalphGitPath -RelativePath ([string]$path)))
+    }
+
+    foreach ($entry in Get-RalphGitStatusEntries)
+    {
+        $path = ConvertTo-RalphGitPath -RelativePath $entry.Path
+        if (-not $preexisting.Contains($path))
+        {
+            throw "The automatic commit left unexpected task-owned path '$($entry.Path)' dirty."
+        }
+    }
+}
+
+function Invoke-RalphCommit
 {
     param(
         [Parameter(Mandatory)][string[]]$Paths,
         [Parameter(Mandatory)]$Task,
-        [Parameter(Mandatory)][string]$Branch
+        [Parameter(Mandatory)]$Snapshot,
+        [Parameter(Mandatory)]$CandidateStates
     )
 
     if ($Paths.Count -eq 0)
     {
-        throw "The task reported Complete but produced no safe Git changes. Ralph will not create an empty commit."
+        throw "The task reported Ready to Commit but produced no safe Git changes. Ralph will not create an empty commit."
     }
 
     $committed = $false
+    $previousHead = $Snapshot.Head
+    $commitMessage = "$($Task.Id): $($Task.Title)"
     try
     {
-        [void](Invoke-RalphGit -Arguments (@("add", "--") + $Paths))
-        $staged = Invoke-RalphGit -Arguments @("diff", "--cached", "--name-only", "--diff-filter=ACDMRTUXB")
-        $stagedPaths = @($staged.Output | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-
-        if ($stagedPaths.Count -eq 0)
+        $currentHead = (Invoke-RalphGit -Arguments @("rev-parse", "HEAD")).Text
+        if ($currentHead -ne $previousHead)
         {
-            throw "No changes were staged for the completed task."
+            throw "HEAD changed between task validation and the automatic commit transaction."
+        }
+        if ((Get-RalphCurrentBranch) -ne $Snapshot.Branch)
+        {
+            throw "The current branch changed before the automatic commit transaction."
+        }
+        if ((Invoke-RalphGit -Arguments @("remote", "get-url", "origin")).Text -ne $Snapshot.OriginUrl)
+        {
+            throw "The origin remote changed before the automatic commit transaction."
+        }
+        if ((Get-RalphGitControlFingerprint) -ne $Snapshot.GitControlFingerprint)
+        {
+            throw "Git configuration, attributes, or hooks changed before staging."
         }
 
-        foreach ($stagedPath in $stagedPaths)
+        foreach ($path in $Paths)
         {
-            if (Test-RalphSensitiveCommitPath -RelativePath $stagedPath)
+            if ((Get-RalphPathState -RelativePath $path) -ne $CandidateStates[$path])
             {
-                throw "A sensitive path reached the staging area: '$stagedPath'."
+                throw "Task-owned path '$path' changed after the manifest was validated."
             }
         }
 
-        $commitMessage = "$($Task.Id): $($Task.Title)"
-        [void](Invoke-RalphGit -Arguments @("commit", "-m", $commitMessage))
+        Assert-RalphNoActiveContentFilters -Paths $Paths
+        [void](Invoke-RalphGit -Arguments (@("add", "--") + $Paths))
+        Assert-RalphStagedCommitCandidate -ExpectedPaths $Paths -Snapshot $Snapshot
+        Assert-RalphStagedContentSafe -Paths $Paths
+        $stagedTree = (Invoke-RalphGit -Arguments @("write-tree")).Text
+        [void](Invoke-RalphGit -Arguments @("-c", "commit.gpgSign=false", "commit", "-m", $commitMessage))
         $committed = $true
         $commit = (Invoke-RalphGit -Arguments @("rev-parse", "HEAD")).Text
+        Assert-RalphPostCommitState -Snapshot $Snapshot -ExpectedPaths $Paths -PreviousHead $previousHead -Commit $commit -CommitMessage $commitMessage -StagedTree $stagedTree
     }
     catch
     {
         if (-not $committed)
         {
-            [void](Invoke-RalphGit -Arguments @("reset") -AllowFailure)
+            [void](Invoke-RalphGit -Arguments (@("reset", "--") + $Paths) -AllowFailure)
         }
         throw
     }
+
+    return [pscustomobject]@{ Commit = $commit; Error = "" }
+}
+
+function Invoke-RalphPush
+{
+    param([Parameter(Mandatory)][string]$Branch)
 
     $delays = @(2, 5, 10)
     $lastPushError = ""
@@ -834,7 +1329,7 @@ function Invoke-RalphCommitAndPush
         $push = Invoke-RalphGit -Arguments @("push", "-u", "origin", $Branch) -AllowFailure
         if ($push.ExitCode -eq 0)
         {
-            return [pscustomobject]@{ Commit = $commit; Pushed = $true; Error = "" }
+            return [pscustomobject]@{ Pushed = $true; Error = "" }
         }
 
         $lastPushError = $push.Text
@@ -845,10 +1340,238 @@ function Invoke-RalphCommitAndPush
     }
 
     return [pscustomobject]@{
-        Commit = $commit
         Pushed = $false
         Error = $lastPushError
     }
+}
+
+function Invoke-RalphCompletionGitTransaction
+{
+    param(
+        [Parameter(Mandatory)]$Result,
+        [Parameter(Mandatory)]$Task,
+        [Parameter(Mandatory)][string[]]$ReportedPaths
+    )
+
+    try
+    {
+        $paths = Get-RalphSafeIterationPaths -Snapshot $Result.Snapshot -ReportedPaths $ReportedPaths
+        $candidateStates = @{}
+        foreach ($path in $paths)
+        {
+            $candidateStates[$path] = Get-RalphPathState -RelativePath $path
+        }
+        $gitResult = Invoke-RalphCommit -Paths $paths -Task $Task -Snapshot $Result.Snapshot -CandidateStates $candidateStates
+        return [pscustomobject]@{
+            Success = $true
+            Commit = $gitResult.Commit
+            Error = $gitResult.Error
+        }
+    }
+    catch
+    {
+        $head = Invoke-RalphGit -Arguments @("rev-parse", "HEAD") -AllowFailure
+        $commit = if ($head.ExitCode -eq 0 -and $head.Text -ne $Result.Snapshot.Head) { $head.Text } else { $null }
+        return [pscustomobject]@{
+            Success = $false
+            Commit = $commit
+            Error = $_.Exception.Message
+        }
+    }
+}
+
+function Get-RalphLinearFinalizationPrompt
+{
+    param(
+        [Parameter(Mandatory)]$Task,
+        [Parameter(Mandatory)][string]$Commit
+    )
+
+    return @"
+This is a narrow Linear-only finalization step for the Perfect Playlist Ralph runner.
+
+Task ID: $($Task.Id)
+Expected title: $($Task.Title)
+Verified local commit: $Commit
+
+Rules:
+1. Do not modify repository files, Git state, GitHub, branches, pull requests, or any issue other than the task and its organizational parent.
+2. Use only the configured Linear MCP server. Read the task and verify that its ID and title match exactly.
+3. The task must be In Progress or already Done. If it is another state, make no changes and report failure.
+4. Ensure the task has one comment containing the exact line "Ralph commit: $Commit". If that exact line already exists, do not add a duplicate.
+5. Mark the task Done if it is still In Progress.
+6. Read the task's parent and every child. Mark the parent Done only if every child is Done and the parent's acceptance criteria are satisfied; otherwise leave it In Progress.
+7. Never modify or mark M-27 Done. Never implement another issue.
+8. This operation must be idempotent so a retry after an uncertain response is safe.
+
+After a concise report, output exactly one line:
+<RALPH_LINEAR_FINALIZATION>COMPLETE</RALPH_LINEAR_FINALIZATION>
+
+If any rule cannot be satisfied, make no further changes and output exactly one line:
+<RALPH_LINEAR_FINALIZATION>FAILED</RALPH_LINEAR_FINALIZATION>
+"@
+}
+
+function Get-RalphLinearVerificationPrompt
+{
+    param(
+        [Parameter(Mandatory)]$Task,
+        [Parameter(Mandatory)][string]$Commit
+    )
+
+    return @"
+This is a read-only Linear reconciliation check for the Perfect Playlist Ralph runner.
+
+Task ID: $($Task.Id)
+Expected title: $($Task.Title)
+Verified local commit: $Commit
+
+Do not modify Linear, repository files, Git state, GitHub, branches, pull requests, or any other external state.
+
+Use the configured Linear MCP server to read the task, its comments, its organizational parent, and every child of that parent. Then output exactly one marker:
+
+- <RALPH_LINEAR_VERIFICATION>VERIFIED</RALPH_LINEAR_VERIFICATION> only when the task ID and title match, the task is Done, exactly one comment contains "Ralph commit: $Commit", and the parent state is correct for the current child states and parent acceptance criteria.
+- <RALPH_LINEAR_VERIFICATION>IN_PROGRESS</RALPH_LINEAR_VERIFICATION> only when the task ID and title match and the task is still In Progress.
+- <RALPH_LINEAR_VERIFICATION>INCONSISTENT</RALPH_LINEAR_VERIFICATION> for every other observed state.
+
+Never modify or mark M-27 Done. Output exactly one verification marker.
+"@
+}
+
+function Invoke-RalphLinearVerification
+{
+    param(
+        [Parameter(Mandatory)]$Task,
+        [Parameter(Mandatory)][string]$Commit,
+        [Parameter(Mandatory)][string]$Model,
+        [Parameter(Mandatory)][string]$Mode,
+        [Parameter(Mandatory)][int]$Iteration
+    )
+
+    $prompt = Get-RalphLinearVerificationPrompt -Task $Task -Commit $Commit
+    $delays = @(2, 5, 10)
+    $lastLogPath = $null
+
+    for ($attemptNumber = 1; $attemptNumber -le [int]$script:RalphConfig.linearAttempts; $attemptNumber++)
+    {
+        $snapshot = New-RalphAttemptSnapshot
+        $attempt = Invoke-RalphCodexAttempt `
+            -Prompt $prompt `
+            -Model $Model `
+            -ReasoningEffort "medium" `
+            -TimeoutMinutes ([int]$script:RalphConfig.bootstrapTimeoutMinutes) `
+            -Label "$Mode-iteration-$Iteration-linear-verify-$attemptNumber"
+        $lastLogPath = $attempt.LogPath
+
+        if (Restore-RalphSecretIfChanged -Snapshot $snapshot.Secret)
+        {
+            return [pscustomobject]@{ Status = "UNKNOWN"; Error = "Spotify secret file changed during Linear verification; original bytes restored."; LogPath = $attempt.LogPath }
+        }
+
+        $changes = Get-RalphAttemptChangeReasons -Snapshot $snapshot
+        if ($changes.Count -gt 0)
+        {
+            return [pscustomobject]@{ Status = "UNKNOWN"; Error = "Linear verification changed repository state: $($changes -join ', ')."; LogPath = $attempt.LogPath }
+        }
+
+        $markers = [regex]::Matches($attempt.FinalMessage, '<RALPH_LINEAR_VERIFICATION>(VERIFIED|IN_PROGRESS|INCONSISTENT)</RALPH_LINEAR_VERIFICATION>')
+        if ($attempt.ExitCode -eq 0 -and -not $attempt.TimedOut -and $markers.Count -eq 1)
+        {
+            $value = $markers[0].Groups[1].Value
+            if ($value -eq "VERIFIED")
+            {
+                return [pscustomobject]@{ Status = "VERIFIED"; Error = ""; LogPath = $attempt.LogPath }
+            }
+            if ($value -eq "IN_PROGRESS")
+            {
+                return [pscustomobject]@{ Status = "IN_PROGRESS"; Error = "Linear authoritatively remains In Progress."; LogPath = $attempt.LogPath }
+            }
+            return [pscustomobject]@{ Status = "UNKNOWN"; Error = "Linear reconciliation found an inconsistent task, comment, or parent state."; LogPath = $attempt.LogPath }
+        }
+
+        if ($attemptNumber -lt [int]$script:RalphConfig.linearAttempts)
+        {
+            Start-Sleep -Seconds $delays[[Math]::Min($attemptNumber - 1, $delays.Count - 1)]
+        }
+    }
+
+    return [pscustomobject]@{ Status = "UNKNOWN"; Error = "Linear reconciliation could not obtain an authoritative read."; LogPath = $lastLogPath }
+}
+
+function Invoke-RalphLinearFinalization
+{
+    param(
+        [Parameter(Mandatory)]$Task,
+        [Parameter(Mandatory)][string]$Commit,
+        [Parameter(Mandatory)][string]$Model,
+        [Parameter(Mandatory)][string]$Mode,
+        [Parameter(Mandatory)][int]$Iteration
+    )
+
+    $prompt = Get-RalphLinearFinalizationPrompt -Task $Task -Commit $Commit
+    $delays = @(2, 5, 10)
+    $lastError = "Linear finalization failed, timed out, or returned an invalid marker."
+    $safetyError = ""
+
+    for ($attemptNumber = 1; $attemptNumber -le [int]$script:RalphConfig.linearAttempts; $attemptNumber++)
+    {
+        $snapshot = New-RalphAttemptSnapshot
+        $attempt = Invoke-RalphCodexAttempt `
+            -Prompt $prompt `
+            -Model $Model `
+            -ReasoningEffort "medium" `
+            -TimeoutMinutes ([int]$script:RalphConfig.bootstrapTimeoutMinutes) `
+            -Label "$Mode-iteration-$Iteration-linear-finalize-$attemptNumber"
+
+        if (Restore-RalphSecretIfChanged -Snapshot $snapshot.Secret)
+        {
+            $safetyError = "Spotify secret file changed during Linear finalization; original bytes restored."
+            break
+        }
+
+        $changes = Get-RalphAttemptChangeReasons -Snapshot $snapshot
+        if ($changes.Count -gt 0)
+        {
+            $safetyError = "Linear finalization changed repository state: $($changes -join ', ')."
+            break
+        }
+
+        $markers = [regex]::Matches($attempt.FinalMessage, '<RALPH_LINEAR_FINALIZATION>(COMPLETE|FAILED)</RALPH_LINEAR_FINALIZATION>')
+        if (
+            $attempt.ExitCode -eq 0 -and
+            -not $attempt.TimedOut -and
+            $markers.Count -eq 1 -and
+            $markers[0].Groups[1].Value -eq "COMPLETE"
+        )
+        {
+            break
+        }
+
+        if ($attemptNumber -lt [int]$script:RalphConfig.linearAttempts)
+        {
+            Start-Sleep -Seconds $delays[[Math]::Min($attemptNumber - 1, $delays.Count - 1)]
+        }
+    }
+
+    $verification = Invoke-RalphLinearVerification -Task $Task -Commit $Commit -Model $Model -Mode $Mode -Iteration $Iteration
+    if ($safetyError)
+    {
+        $verificationDetail = if ($verification.Error) { $verification.Error } else { "Independent Linear state: $($verification.Status)." }
+        return [pscustomobject]@{
+            Success = $false
+            LinearState = $verification.Status
+            Error = "$safetyError $verificationDetail"
+            LogPath = $verification.LogPath
+        }
+    }
+
+    if ($verification.Status -eq "VERIFIED")
+    {
+        return [pscustomobject]@{ Success = $true; LinearState = "VERIFIED"; Error = ""; LogPath = $verification.LogPath }
+    }
+
+    $error = if ($verification.Error) { $verification.Error } else { $lastError }
+    return [pscustomobject]@{ Success = $false; LinearState = $verification.Status; Error = $error; LogPath = $verification.LogPath }
 }
 
 function Write-RalphLatestState
@@ -877,6 +1600,46 @@ function Write-RalphLatestState
         message = $Message
         updatedAt = [DateTimeOffset]::Now.ToString("o")
     } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $script:RalphLatestStatePath -Encoding utf8
+}
+
+function Invoke-RalphReadyTaskCompletion
+{
+    param(
+        [Parameter(Mandatory)]$Result,
+        [Parameter(Mandatory)]$Task,
+        [Parameter(Mandatory)][string[]]$ReportedPaths,
+        [Parameter(Mandatory)][string]$Branch,
+        [Parameter(Mandatory)][string]$Model,
+        [Parameter(Mandatory)][string]$Mode,
+        [Parameter(Mandatory)][int]$Iteration
+    )
+
+    $gitResult = Invoke-RalphCompletionGitTransaction -Result $Result -Task $Task -ReportedPaths $ReportedPaths
+    if (-not $gitResult.Success)
+    {
+        Write-RalphLatestState -Iteration $Iteration -Task $Task.Id -Status "COMMIT_FAILED" -Model $Model -ReasoningEffort $Result.Effort -Commit $gitResult.Commit -Pushed $false -LogPath $Result.Attempt.LogPath -Message $gitResult.Error
+        return [pscustomobject]@{ Status = "COMMIT_FAILED"; Commit = $gitResult.Commit; Error = $gitResult.Error }
+    }
+
+    Write-RalphLatestState -Iteration $Iteration -Task $Task.Id -Status "COMMITTED_PENDING_LINEAR" -Model $Model -ReasoningEffort $Result.Effort -Commit $gitResult.Commit -Pushed $false -LogPath $Result.Attempt.LogPath -Message "The verified local commit exists; Linear finalization and push are pending."
+
+    $linearResult = Invoke-RalphLinearFinalization -Task $Task -Commit $gitResult.Commit -Model $Model -Mode $Mode -Iteration $Iteration
+    if (-not $linearResult.Success)
+    {
+        $status = if ($linearResult.LinearState -eq "IN_PROGRESS") { "LINEAR_FINALIZE_FAILED" } else { "LINEAR_FINALIZE_UNKNOWN" }
+        Write-RalphLatestState -Iteration $Iteration -Task $Task.Id -Status $status -Model $Model -ReasoningEffort $Result.Effort -Commit $gitResult.Commit -Pushed $false -LogPath $linearResult.LogPath -Message $linearResult.Error
+        return [pscustomobject]@{ Status = $status; Commit = $gitResult.Commit; Error = $linearResult.Error }
+    }
+
+    $pushResult = Invoke-RalphPush -Branch $Branch
+    if (-not $pushResult.Pushed)
+    {
+        Write-RalphLatestState -Iteration $Iteration -Task $Task.Id -Status "PUSH_FAILED" -Model $Model -ReasoningEffort $Result.Effort -Commit $gitResult.Commit -Pushed $false -LogPath $linearResult.LogPath -Message $pushResult.Error
+        return [pscustomobject]@{ Status = "PUSH_FAILED"; Commit = $gitResult.Commit; Error = $pushResult.Error }
+    }
+
+    Write-RalphLatestState -Iteration $Iteration -Task $Task.Id -Status "COMPLETE" -Model $Model -ReasoningEffort $Result.Effort -Commit $gitResult.Commit -Pushed $true -LogPath $linearResult.LogPath -Message ""
+    return [pscustomobject]@{ Status = "COMPLETE"; Commit = $gitResult.Commit; Error = "" }
 }
 
 function Test-RalphSandboxExists
@@ -1113,7 +1876,7 @@ function Invoke-RalphTaskAttemptWithOptionalRetry
     }
 
     $attemptHealthy = $attempt.ExitCode -eq 0 -and -not $attempt.TimedOut
-    $statusRecognized = $status -in @("COMPLETE", "INCOMPLETE", "BLOCKED", "REVIEW_REQUIRED")
+    $statusRecognized = $status -in @("READY_TO_COMMIT", "INCOMPLETE", "BLOCKED", "REVIEW_REQUIRED")
 
     if ($attemptHealthy -and $statusRecognized)
     {
@@ -1178,7 +1941,7 @@ function Invoke-RalphTaskAttemptWithOptionalRetry
     }
 
     $retryHealthy = $retryAttempt.ExitCode -eq 0 -and -not $retryAttempt.TimedOut
-    $retryRecognized = $retryStatus -in @("COMPLETE", "INCOMPLETE", "BLOCKED", "REVIEW_REQUIRED")
+    $retryRecognized = $retryStatus -in @("READY_TO_COMMIT", "INCOMPLETE", "BLOCKED", "REVIEW_REQUIRED")
     $finalRetryStatus = if ($retryHealthy -and $retryRecognized) { $retryStatus } elseif ($retryHealthy) { "MALFORMED" } else { "EXECUTION_FAILED" }
     $retryMessage = if ($finalRetryStatus -in @("MALFORMED", "EXECUTION_FAILED")) {
         "The Luna High recovery attempt failed or did not produce a valid final status."
@@ -1233,7 +1996,7 @@ function Invoke-RalphOnce
             return 0
         }
 
-        if ($result.Status -ne "COMPLETE")
+        if ($result.Status -ne "READY_TO_COMMIT")
         {
             Write-RalphLatestState -Iteration 1 -Task $null -Status $result.Status -Model $Model -ReasoningEffort $result.Effort -Commit $null -Pushed $false -LogPath $result.Attempt.LogPath -Message $result.Message
             Write-Warning "RalphOnce stopped with status $($result.Status). No commit or push was performed."
@@ -1244,20 +2007,47 @@ function Invoke-RalphOnce
         if ($null -eq $task)
         {
             Write-RalphLatestState -Iteration 1 -Task $null -Status "MALFORMED" -Model $Model -ReasoningEffort $result.Effort -Commit $null -Pushed $false -LogPath $result.Attempt.LogPath -Message "Missing Task line."
-            Write-Host "The result was Complete but its Task line could not be parsed." -ForegroundColor Red
+            Write-Host "The result was Ready to Commit but its Task line could not be parsed." -ForegroundColor Red
             return 2
         }
 
-        $paths = Get-RalphSafeIterationPaths -Snapshot $result.Snapshot
-        $gitResult = Invoke-RalphCommitAndPush -Paths $paths -Task $task -Branch $branch
-        if (-not $gitResult.Pushed)
+        try
         {
-            Write-RalphLatestState -Iteration 1 -Task $task.Id -Status "PUSH_FAILED" -Model $Model -ReasoningEffort $result.Effort -Commit $gitResult.Commit -Pushed $false -LogPath $result.Attempt.LogPath -Message $gitResult.Error
-            Write-Host "The local commit was created, but push failed after three attempts. Linear remains complete. Push the commit manually." -ForegroundColor Red
+            $reportedPaths = @(Get-RalphReportedChangedPaths -FinalMessage $result.Attempt.FinalMessage)
+            if ($reportedPaths.Count -eq 0)
+            {
+                throw "Ready-to-commit output reported an empty changed-path manifest."
+            }
+        }
+        catch
+        {
+            Write-RalphLatestState -Iteration 1 -Task $task.Id -Status "MALFORMED" -Model $Model -ReasoningEffort $result.Effort -Commit $null -Pushed $false -LogPath $result.Attempt.LogPath -Message $_.Exception.Message
+            Write-Host $_.Exception.Message -ForegroundColor Red
+            return 2
+        }
+
+        $completion = Invoke-RalphReadyTaskCompletion -Result $result -Task $task -ReportedPaths $reportedPaths -Branch $branch -Model $Model -Mode "once" -Iteration 1
+        if ($completion.Status -eq "COMMIT_FAILED")
+        {
+            Write-Host "Automatic commit-on-ready failed. Ralph stopped before Linear finalization and push. $($completion.Error)" -ForegroundColor Red
+            return 4
+        }
+        if ($completion.Status -eq "LINEAR_FINALIZE_FAILED")
+        {
+            Write-Host "The verified local commit exists, but Linear finalization failed. Linear remains In Progress and no push was attempted. $($completion.Error)" -ForegroundColor Red
+            return 5
+        }
+        if ($completion.Status -eq "LINEAR_FINALIZE_UNKNOWN")
+        {
+            Write-Host "The verified local commit exists, but Linear reconciliation could not determine the authoritative state. No push was attempted. $($completion.Error)" -ForegroundColor Red
+            return 6
+        }
+        if ($completion.Status -eq "PUSH_FAILED")
+        {
+            Write-Host "The local commit was created and Linear was finalized, but push failed after three attempts. Push the commit manually." -ForegroundColor Red
             return 3
         }
 
-        Write-RalphLatestState -Iteration 1 -Task $task.Id -Status "COMPLETE" -Model $Model -ReasoningEffort $result.Effort -Commit $gitResult.Commit -Pushed $true -LogPath $result.Attempt.LogPath -Message ""
         Write-Host "RalphOnce completed, committed, and pushed $($task.Id) on '$branch'."
         return 0
     }
@@ -1317,7 +2107,7 @@ function Invoke-RalphBounded
                 return 0
             }
 
-            if ($result.Status -ne "COMPLETE")
+            if ($result.Status -ne "READY_TO_COMMIT")
             {
                 Write-RalphLatestState -Iteration $iteration -Task $null -Status $result.Status -Model $Model -ReasoningEffort $result.Effort -Commit $null -Pushed $false -LogPath $result.Attempt.LogPath -Message $result.Message
                 Write-Warning "Bounded Ralph stopped with status $($result.Status). No new iteration will start."
@@ -1328,22 +2118,49 @@ function Invoke-RalphBounded
             if ($null -eq $task)
             {
                 Write-RalphLatestState -Iteration $iteration -Task $null -Status "MALFORMED" -Model $Model -ReasoningEffort $result.Effort -Commit $null -Pushed $false -LogPath $result.Attempt.LogPath -Message "Missing Task line."
-                Write-Host "The result was Complete but its Task line could not be parsed." -ForegroundColor Red
+                Write-Host "The result was Ready to Commit but its Task line could not be parsed." -ForegroundColor Red
                 return 2
             }
 
-            $paths = Get-RalphSafeIterationPaths -Snapshot $result.Snapshot
-            $branch = [string]$script:RalphConfig.boundedBranch
-            $gitResult = Invoke-RalphCommitAndPush -Paths $paths -Task $task -Branch $branch
-            if (-not $gitResult.Pushed)
+            try
             {
-                Write-RalphLatestState -Iteration $iteration -Task $task.Id -Status "PUSH_FAILED" -Model $Model -ReasoningEffort $result.Effort -Commit $gitResult.Commit -Pushed $false -LogPath $result.Attempt.LogPath -Message $gitResult.Error
-                Write-Host "The local commit was created, but push failed after three attempts. Linear remains complete. Push the commit manually." -ForegroundColor Red
+                $reportedPaths = @(Get-RalphReportedChangedPaths -FinalMessage $result.Attempt.FinalMessage)
+                if ($reportedPaths.Count -eq 0)
+                {
+                    throw "Ready-to-commit output reported an empty changed-path manifest."
+                }
+            }
+            catch
+            {
+                Write-RalphLatestState -Iteration $iteration -Task $task.Id -Status "MALFORMED" -Model $Model -ReasoningEffort $result.Effort -Commit $null -Pushed $false -LogPath $result.Attempt.LogPath -Message $_.Exception.Message
+                Write-Host $_.Exception.Message -ForegroundColor Red
+                return 2
+            }
+
+            $branch = [string]$script:RalphConfig.boundedBranch
+            $completion = Invoke-RalphReadyTaskCompletion -Result $result -Task $task -ReportedPaths $reportedPaths -Branch $branch -Model $Model -Mode "bounded" -Iteration $iteration
+            if ($completion.Status -eq "COMMIT_FAILED")
+            {
+                Write-Host "Automatic commit-on-ready failed. Bounded Ralph stopped before Linear finalization and push. $($completion.Error)" -ForegroundColor Red
+                return 4
+            }
+            if ($completion.Status -eq "LINEAR_FINALIZE_FAILED")
+            {
+                Write-Host "The verified local commit exists, but Linear finalization failed. Linear remains In Progress and no push was attempted. $($completion.Error)" -ForegroundColor Red
+                return 5
+            }
+            if ($completion.Status -eq "LINEAR_FINALIZE_UNKNOWN")
+            {
+                Write-Host "The verified local commit exists, but Linear reconciliation could not determine the authoritative state. No push was attempted. $($completion.Error)" -ForegroundColor Red
+                return 6
+            }
+            if ($completion.Status -eq "PUSH_FAILED")
+            {
+                Write-Host "The local commit was created and Linear was finalized, but push failed after three attempts. Push the commit manually." -ForegroundColor Red
                 return 3
             }
 
-            $expectedRemoteSha = $gitResult.Commit
-            Write-RalphLatestState -Iteration $iteration -Task $task.Id -Status "COMPLETE" -Model $Model -ReasoningEffort $result.Effort -Commit $gitResult.Commit -Pushed $true -LogPath $result.Attempt.LogPath -Message ""
+            $expectedRemoteSha = $completion.Commit
             Write-Host "Completed, committed, and pushed $($task.Id)."
         }
 

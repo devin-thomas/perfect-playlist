@@ -37,6 +37,7 @@ The approved next CLI is specified in [the CLI contract](docs/CLI-CONTRACT.md). 
 - [Product vision and ubiquitous language](docs/PRODUCT-AND-LANGUAGE.md)
 - [Authoritative CLI contract](docs/CLI-CONTRACT.md)
 - [Reconciled implementation plan](docs/IMPLEMENTATION-PLAN.md)
+- [Git completion workflow](docs/GIT-WORKFLOW.md)
 - [Live Spotify QA evidence and handoff](docs/LIVE-QA.md)
 
 Start with [the documentation index](docs/README.md) when implementing or reviewing the project.
@@ -94,6 +95,12 @@ The live Spotify test is controlled by `resources/spotify-secrets.env`. Set
 `PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS=1` to include a temporary public
 create/verify/unfollow cycle in every full pytest run. Leave it at `0` to keep
 live writes opt-in.
+
+Codex agents should keep offline checks in the default sandbox and invoke a
+credentialed test or OAuth command with network-enabled execution on its first
+attempt. In Codex Desktop, this means setting
+`sandbox_permissions: "require_escalated"` on the initial live shell call rather
+than first waiting for an expected restricted-network failure.
 
 ```powershell
 python -m pytest

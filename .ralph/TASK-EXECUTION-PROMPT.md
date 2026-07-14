@@ -5,7 +5,7 @@ This is the canonical prompt for both `RalphOnce.ps1` and bounded `Ralph.ps1` ru
 ## Prompt
 
 ```text
-Complete exactly one next task from the Perfect Playlist implementation plan.
+Implement and fully verify exactly one next task from the Perfect Playlist implementation plan, then prepare it for the host-owned commit transaction.
 
 Repository: current repository root (expected local path: C:\dev\personal\spotify-playlist-modify)
 Spotify secrets file: resources/spotify-secrets.env
@@ -27,6 +27,7 @@ Before changing anything:
    - docs/PRODUCT-AND-LANGUAGE.md
    - docs/CLI-CONTRACT.md
    - docs/IMPLEMENTATION-PLAN.md
+   - docs/GIT-WORKFLOW.md
    - docs/LIVE-QA.md
 4. Inspect git status. The worktree may contain intentional changes from earlier tasks. Preserve them, do not revert them, and do not overwrite unrelated work.
 5. Use Linear to read M-115, M-116, M-117, M-27, and all children of the three parent issues, including each issue's status and blockers.
@@ -50,8 +51,9 @@ Authority order:
 2. docs/CLI-CONTRACT.md defines user-visible behavior.
 3. docs/PRODUCT-AND-LANGUAGE.md defines product intent and canonical terminology.
 4. docs/IMPLEMENTATION-PLAN.md defines sequencing and boundaries.
-5. docs/LIVE-QA.md provides historical evidence and safety constraints.
-6. Existing code is the implementation baseline, not authority for superseded behavior.
+5. AGENTS.md and docs/GIT-WORKFLOW.md define commit ownership and completion.
+6. docs/LIVE-QA.md provides historical evidence and safety constraints.
+7. Existing code is the implementation baseline, not authority for superseded behavior.
 
 Execution rules:
 
@@ -62,37 +64,39 @@ Execution rules:
 - Do not add compatibility aliases, transitional commands, speculative features, unrelated refactors, or work assigned to later issues.
 - Add or update focused tests for behavior changed by this task.
 - Run task-specific tests first, then every applicable repository check.
+- Keep offline tests and other local checks in the normal Ralph sandbox. Treat commands known in advance to require live HTTPS - including credentialed Spotify tests and Spotify OAuth token exchange - as network-dependent before invocation and use the sandbox's configured network path on the first attempt; do not run a predictably blocked policy probe first. Use the configured Linear MCP server directly, and leave GitHub pushes to the host-side runner as required below. If Docker policy denies a required domain, report that domain for host allowlisting instead of repeating the unchanged command.
+- Use a fresh pytest temporary directory outside the repository for isolated or retried tests when the repository `.pytest-tmp` directory is locked or permission-denied. Do not delete or modify repository fixtures, caches, or secrets to work around the lock.
 - Runtime and tests may load repository-relative `resources/spotify-secrets.env` through approved code paths. Never directly open, print, inspect, modify, commit, paste into Linear, or duplicate its contents. Use `spotify-secrets.env.example` only to understand variable names.
 - `LINEAR_API_KEY` is host/proxy-only. The agent receives a placeholder and must never attempt to retrieve or expose the real key.
 - Do not claim completion if an applicable check fails or an expected test is skipped.
-- Do not create a Git commit, push a branch, open a pull request, rewrite history, modify remotes, or stage files. The host-side Ralph runner exclusively owns staging, commits, and pushes after it validates your result.
+- Do not create a Git commit, push a branch, open a pull request, rewrite history, modify remotes, or stage files. The host-side Ralph runner exclusively owns Git. In Ralph, `Status: Ready to Commit` asks the host to validate the reported task-owned path manifest, stage the exact diff, create `<TASK_ID>: <issue title>`, verify the commit, finalize Linear, and push. Emit Ready to Commit only after the readiness gate passes and a non-empty task-owned diff exists. The next task must not start unless that host transaction succeeds.
 
-Completion gate:
+Ready-to-commit gate:
 
-Mark TASK_ID Done only when:
+Report TASK_ID Ready to Commit only when:
 
 - every acceptance criterion is implemented;
 - relevant tests pass;
 - all applicable full checks pass;
 - no unintended test is skipped;
 - documentation directly affected by this task is accurate; and
-- git status contains no accidental secret, cache, fixture, or unrelated generated file.
+- git status contains no accidental secret, cache, fixture, or unrelated generated file; and
+- the task produced a non-empty committable diff for the host runner.
 
-If a test fails or is skipped, report that **BOLDLY AND CLEARLY**, explain the reason, try to resolve it, and leave TASK_ID incomplete if full verification is still missing.
+If a test fails or is skipped, report that **BOLDLY AND CLEARLY**, explain the reason, try to resolve it, and leave TASK_ID In Progress if full verification is still missing.
 
-Parent bookkeeping:
+Linear finalization boundary:
 
-- After marking TASK_ID Done, check its parent.
-- If every child of that parent is Done and the parent's acceptance criteria are satisfied, mark the parent Done.
-- Otherwise leave the parent In Progress.
-- This bookkeeping does not authorize implementation of another child.
+- During this implementation pass, add the required timing, implementation, file, and validation details to TASK_ID but leave TASK_ID In Progress.
+- Do not mark TASK_ID or its parent Done. After the host creates and verifies the commit, a separate Linear-only finalizer records the commit SHA, marks TASK_ID Done, and marks the parent Done only when every child and the parent's acceptance criteria are complete.
+- This boundary does not authorize implementation of another child.
 - Never modify or mark M-27 Done.
 
 At the end:
 
 1. Record your end time in America/Chicago.
 2. Calculate and report total whole minutes worked.
-3. Update TASK_ID in Linear with:
+3. Update TASK_ID in Linear while leaving it In Progress with:
    - start time;
    - end time;
    - minutes worked;
@@ -100,11 +104,11 @@ At the end:
    - files materially changed;
    - exact tests/checks run and results;
    - any failures, skips, residual risks, or blockers.
-4. Apply the completion gate and parent bookkeeping above.
+4. Apply the readiness gate and Linear finalization boundary above.
 5. Report back using this structure:
 
 Task: TASK_ID — <title>
-Status: Complete | Incomplete | Blocked
+Status: Ready to Commit | Incomplete | Blocked
 
 For the no-task final boundary only, use:
 Task: None — M-27 requires independent review
@@ -112,6 +116,7 @@ Status: Review Required
 Start: <America/Chicago timestamp>
 End: <America/Chicago timestamp>
 Minutes worked: <whole number>
+Commit: Pending host commit for Ready to Commit; otherwise Not created
 
 Implemented:
 - <concise outcomes>
@@ -131,9 +136,14 @@ Failures, skipped tests, or residual risks:
   OR
 - **FAILED/SKIPPED/BLOCKED:** <clear explanation>
 
+After the human-readable report, output exactly one additional line in this form:
+<RALPH_CHANGED_PATHS>["repository/relative/path", "another/path"]</RALPH_CHANGED_PATHS>
+
+For Ready to Commit, the JSON array must contain every path intentionally changed for TASK_ID and no path that was already dirty before this task. Use forward slashes, no absolute paths, and no `..` segments. For Incomplete, Blocked, or Review Required, output an empty JSON array. Do not output more than one RALPH_CHANGED_PATHS marker.
+
 Do not start another task after reporting.
 ```
 
-## Initial selection
+## Selection invariant
 
-With the current Linear state, the algorithm selects `[1.0] M-135`. The unchanged selection process then continues through `[1.1] M-118` and `[3.6]`. It stops with `Review Required`; it never starts M-27.
+No current child is hard-coded in this prompt. Resolve the next task from authoritative Linear state on every run. Keep completed issues Done, do not infer that a successor is In Progress from repository dirt, and stop with `Review Required` rather than starting M-27.

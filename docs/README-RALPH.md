@@ -4,15 +4,16 @@ This package implements a bounded Ralph Wiggum loop around Codex in Docker Sandb
 
 ## Final behavior
 
-- `RalphOnce.ps1` runs one fresh Codex session against the currently checked-out branch, commits and pushes only after `Status: Complete`, and always stops.
+- `RalphOnce.ps1` runs one fresh implementation session against the currently checked-out branch, starts the host transaction only after `Status: Ready to Commit`, and always stops after that transaction succeeds or fails.
 - `Ralph.ps1` defaults to five iterations on the permanent `implementation` branch.
-- Bounded Ralph starts another iteration only after `<RALPH_STATUS>COMPLETE</RALPH_STATUS>`.
+- Bounded Ralph enters the host transaction only after `<RALPH_STATUS>READY_TO_COMMIT</RALPH_STATUS>` and starts another iteration only after commit, Linear finalization, and push all succeed.
 - A legitimate Incomplete or Blocked result stops immediately.
 - A malformed, nonzero, or timed-out attempt gets one retry only when the repository is unchanged. The retry keeps the selected model and raises reasoning to High.
 - Medium attempts have a 20-minute timeout; High recovery attempts have a 40-minute timeout.
 - M-27 is never run. When only M-27 remains, bounded Ralph exits successfully with Review Required.
 - Codex never stages, commits, pushes, opens a PR, or merges. The host PowerShell runner owns staging, commits, and pushes.
 - Successful commits use `<TASK_ID>: <issue title>` formatting.
+- `Ready to Commit` is a transaction trigger, not a completion claim: the task remains In Progress until the host verifies the commit and the Linear-only finalizer marks it Done.
 - Ralph permits pre-existing dirty files but stops if Codex touches one of those paths.
 - Existing staged changes are not allowed.
 - Logs and state are written under gitignored `.ralph/logs/` and `.ralph/state/`.
@@ -20,11 +21,13 @@ This package implements a bounded Ralph Wiggum loop around Codex in Docker Sandb
 ## Files
 
 ```text
+AGENTS.md
 Ralph.ps1
 RalphOnce.ps1
 Setup-Ralph.ps1
 README-RALPH.md
 RALPH-SETUP-DECISIONS.md
+docs/GIT-WORKFLOW.md
 .ralph/.gitignore
 .ralph/config.json
 .ralph/Ralph.Core.ps1
@@ -75,6 +78,20 @@ sbx login
 
 Choose the Balanced network policy.
 
+Before a Ralph run that can reach credentialed Spotify QA, allow the known
+service domains from the host so the first live attempt uses the intended
+network path instead of probing a blocked policy first:
+
+```powershell
+sbx policy allow network mcp.linear.app
+sbx policy allow network accounts.spotify.com
+sbx policy allow network api.spotify.com
+```
+
+Ralph already bypasses Codex's inner command sandbox; Docker's outer network
+policy remains authoritative. Keep unrelated domains blocked and add another
+domain only when a task demonstrates that it is required.
+
 ## 3. Run setup
 
 From the repository root in PowerShell 7:
@@ -106,7 +123,7 @@ pwsh .\Setup-Ralph.ps1 -SkipOpenAIOAuth -SkipLinearSecret -ForceBootstrap
 Review the files, then commit them before asking Ralph to modify the project:
 
 ```powershell
-git add Ralph.ps1 RalphOnce.ps1 Setup-Ralph.ps1 docs/README-RALPH.md docs/RALPH-SETUP-DECISIONS.md .ralph
+git add -- AGENTS.md Ralph.ps1 RalphOnce.ps1 Setup-Ralph.ps1 README.md docs/GIT-WORKFLOW.md docs/README.md docs/README-RALPH.md docs/RALPH-SETUP-DECISIONS.md docs/TASK-EXECUTION-PROMPT.md docs/IMPLEMENTATION-PLAN.md .ralph/.gitignore .ralph/config.json .ralph/Ralph.Core.ps1 .ralph/TASK-EXECUTION-PROMPT.md tests/Ralph.Core.Smoke.ps1
 git commit -m "chore: add bounded Ralph Codex runner"
 git push
 ```
@@ -118,6 +135,8 @@ pwsh .\RalphOnce.ps1
 ```
 
 This uses Luna Medium by default, allows a dirty worktree, protects every path that was already dirty, and pushes to the current branch only after a successful task.
+
+Completed but uncommitted work from an earlier session must be reconciled before its successor runs. Ralph treats every path dirty at startup as protected user work and will not roll that backlog into a later task's commit.
 
 A single optional recovery attempt:
 
@@ -165,6 +184,20 @@ The automatic recovery attempt changes only reasoning effort to High; it keeps w
 
 If your installed Codex catalog uses a different CLI identifier for the UI label “5.6 Luna,” pass the exact identifier shown by your Codex installation with `-Model`. The setup bootstrap deliberately fails early when the configured identifier is unavailable. The runner keeps model selection explicit instead of modifying your global Codex configuration.
 
+## Commit transaction
+
+After the sandbox agent passes every required check, leaves Linear In Progress, and reports `Ready to Commit`, the host runner:
+
+1. verifies branch, `HEAD`, origin, repository-local Git controls, the clean starting index, and every pre-existing dirty path;
+2. requires the new dirty path set to match the agent's explicit JSON path manifest;
+3. blocks active content filters, reads staged blobs directly to reject non-regular or non-UTF-8 content independent of Git diff attributes, and scans for sensitive paths, known secret values, and credential-shaped additions;
+4. disables hooks and filesystem monitors, stages the exact manifest, runs `git diff --cached --check`, and records the staged tree;
+5. creates `<TASK_ID>: <issue title>` automatically and verifies the commit's parent, subject, tree, path set, clean index, and remaining protected dirt;
+6. records `COMMITTED_PENDING_LINEAR`, runs a narrow idempotent Linear-only finalizer that records the commit SHA and marks the task and eligible parent Done, and confirms the result with a separate read-only reconciliation pass; and
+7. pushes from the host before bounded Ralph may start another task.
+
+An `Incomplete`, `Blocked`, malformed, failed, or `Review Required` result never enters this transaction. A staging, commit, or post-commit verification error records `COMMIT_FAILED` while Linear remains In Progress. If reconciliation proves Linear is still In Progress, Ralph records `LINEAR_FINALIZE_FAILED`; if an authoritative read cannot be obtained or finds inconsistent state, it records `LINEAR_FINALIZE_UNKNOWN`. Both preserve the local commit and do not push. A permanent push error records `PUSH_FAILED`, preserves the verified local commit after Linear is verified Done, and stops for manual recovery.
+
 ## Safety behavior
 
 Ralph refuses automatic commits when:
@@ -172,8 +205,16 @@ Ralph refuses automatic commits when:
 - the index was already staged;
 - Codex created a commit or changed HEAD;
 - Codex touched a path that was dirty before the iteration;
-- the result says Complete but no safe Git changes exist;
+- the result says Ready to Commit but no safe Git changes exist;
+- the reported path manifest differs from the actual new dirty path set;
+- repository-local Git configuration, attributes, or hooks changed;
+- any candidate path contains a non-regular entry or staged blob that is not strict UTF-8 text;
 - a sensitive path reaches staging;
+- an active Git content filter applies to a candidate path;
+- the staged diff contains a known secret or credential-shaped addition;
+- the staged path set differs from the computed iteration path set;
+- `git diff --cached --check` fails;
+- the created commit or post-commit worktree does not exactly match the validated candidate;
 - another Ralph process holds the local lock.
 
 Hard-blocked commit paths include:
@@ -190,6 +231,16 @@ resources/spotify-secrets.env
 The real Spotify secret file is byte-snapshotted before each attempt. If Codex changes or deletes it, the runner restores the original bytes and stops.
 
 If push fails after three attempts, Ralph leaves the verified local commit and completed Linear state intact, then stops for manual push recovery.
+
+If Linear finalization fails or cannot be reconciled, inspect `.ralph/state/latest-run.json` and the referenced finalizer or verification log before taking another task. Do not push the local commit until an authoritative Linear read confirms that the task is Done, its exact `Ralph commit: <SHA>` comment exists, and its parent has the expected state. For `LINEAR_FINALIZE_FAILED`, repeat only the narrow idempotent finalization; for `LINEAR_FINALIZE_UNKNOWN`, establish the authoritative state first and then perform only the missing reconciliation step.
+
+## Local runner validation
+
+Run the non-mutating parser and guardrail smoke test after changing Ralph:
+
+```powershell
+pwsh -NoProfile -File .\tests\Ralph.Core.Smoke.ps1
+```
 
 ## Logs and state
 
