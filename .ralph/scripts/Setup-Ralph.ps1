@@ -11,8 +11,9 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-Set-Location -LiteralPath $PSScriptRoot
-. "$PSScriptRoot/.ralph/Ralph.Core.ps1"
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+Set-Location -LiteralPath $repositoryRoot
+. (Join-Path $repositoryRoot ".ralph/Ralph.Core.ps1")
 
 Assert-RalphHost
 Assert-RalphRepository
@@ -82,5 +83,5 @@ if ($code -ne 0)
 
 Write-Host ""
 Write-Host "Ralph setup is ready."
-Write-Host "Try: pwsh .\RalphOnce.ps1"
+Write-Host "Try: pwsh .\.ralph\scripts\RalphOnce.ps1"
 exit 0

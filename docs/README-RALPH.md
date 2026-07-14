@@ -4,8 +4,8 @@ This package implements a bounded Ralph Wiggum loop around Codex in Docker Sandb
 
 ## Final behavior
 
-- `RalphOnce.ps1` runs one fresh implementation session against the currently checked-out branch, starts the host transaction only after `Status: Ready to Commit`, and always stops after that transaction succeeds or fails.
-- `Ralph.ps1` defaults to five iterations on the permanent `implementation` branch.
+- `.ralph/scripts/RalphOnce.ps1` runs one fresh implementation session against the currently checked-out branch, starts the host transaction only after `Status: Ready to Commit`, and always stops after that transaction succeeds or fails.
+- `.ralph/scripts/Ralph.ps1` defaults to five iterations on the permanent `implementation` branch.
 - Bounded Ralph enters the host transaction only after `<RALPH_STATUS>READY_TO_COMMIT</RALPH_STATUS>` and starts another iteration only after commit, Linear finalization, and push all succeed.
 - A legitimate Incomplete or Blocked result stops immediately.
 - A malformed, nonzero, or timed-out attempt gets one retry only when the repository is unchanged. The retry keeps the selected model and raises reasoning to High.
@@ -22,9 +22,9 @@ This package implements a bounded Ralph Wiggum loop around Codex in Docker Sandb
 
 ```text
 AGENTS.md
-Ralph.ps1
-RalphOnce.ps1
-Setup-Ralph.ps1
+.ralph/scripts/Ralph.ps1
+.ralph/scripts/RalphOnce.ps1
+.ralph/scripts/Setup-Ralph.ps1
 README-RALPH.md
 RALPH-SETUP-DECISIONS.md
 docs/GIT-WORKFLOW.md
@@ -59,7 +59,7 @@ spotify-secrets.env.example
 
 Environment names must not contain Markdown escape backslashes. Use `SPOTIPY_CLIENT_ID`, not `SPOTIPY\_CLIENT\_ID`.
 
-The private file contains the names shown in repository-root `spotify-secrets.env.example`. Perfect Playlist reads the Spotify values directly. Setting `PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS=1` makes every full pytest run include the temporary public Spotify create/verify/unfollow test. `Setup-Ralph.ps1` alone reads `LINEAR_API_KEY` to register Docker's domain-scoped proxy secret; task agents must never directly inspect the file.
+The private file contains the names shown in repository-root `spotify-secrets.env.example`. Perfect Playlist reads the Spotify values directly. Setting `PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS=1` makes every full pytest run include the temporary public Spotify create/verify/unfollow test. `.ralph/scripts/Setup-Ralph.ps1` alone reads `LINEAR_API_KEY` to register Docker's domain-scoped proxy secret; task agents must never directly inspect the file.
 
 ## 2. Install Docker Sandboxes
 
@@ -97,7 +97,7 @@ domain only when a task demonstrates that it is required.
 From the repository root in PowerShell 7:
 
 ```powershell
-pwsh .\Setup-Ralph.ps1
+pwsh .\.ralph\scripts\Setup-Ralph.ps1
 ```
 
 The setup command:
@@ -115,7 +115,7 @@ Docker's current custom-secret interface passes the value to the short-lived `sb
 To repeat only the bootstrap check later:
 
 ```powershell
-pwsh .\Setup-Ralph.ps1 -SkipOpenAIOAuth -SkipLinearSecret -ForceBootstrap
+pwsh .\.ralph\scripts\Setup-Ralph.ps1 -SkipOpenAIOAuth -SkipLinearSecret -ForceBootstrap
 ```
 
 ## 4. Commit the runner
@@ -123,7 +123,7 @@ pwsh .\Setup-Ralph.ps1 -SkipOpenAIOAuth -SkipLinearSecret -ForceBootstrap
 Review the files, then commit them before asking Ralph to modify the project:
 
 ```powershell
-git add -- AGENTS.md Ralph.ps1 RalphOnce.ps1 Setup-Ralph.ps1 README.md docs/GIT-WORKFLOW.md docs/README.md docs/README-RALPH.md docs/RALPH-SETUP-DECISIONS.md docs/TASK-EXECUTION-PROMPT.md docs/IMPLEMENTATION-PLAN.md .ralph/.gitignore .ralph/config.json .ralph/Ralph.Core.ps1 .ralph/TASK-EXECUTION-PROMPT.md tests/Ralph.Core.Smoke.ps1
+git add -- AGENTS.md .ralph/scripts/Ralph.ps1 .ralph/scripts/RalphOnce.ps1 .ralph/scripts/Setup-Ralph.ps1 README.md docs/GIT-WORKFLOW.md docs/README.md docs/README-RALPH.md docs/RALPH-SETUP-DECISIONS.md docs/TASK-EXECUTION-PROMPT.md docs/IMPLEMENTATION-PLAN.md .ralph/.gitignore .ralph/config.json .ralph/Ralph.Core.ps1 .ralph/TASK-EXECUTION-PROMPT.md tests/Ralph.Core.Smoke.ps1
 git commit -m "chore: add bounded Ralph Codex runner"
 git push
 ```
@@ -131,7 +131,7 @@ git push
 ## 5. Human-in-the-loop run
 
 ```powershell
-pwsh .\RalphOnce.ps1
+pwsh .\.ralph\scripts\RalphOnce.ps1
 ```
 
 This uses Luna Medium by default, allows a dirty worktree, protects every path that was already dirty, and pushes to the current branch only after a successful task.
@@ -141,25 +141,25 @@ Completed but uncommitted work from an earlier session must be reconciled before
 A single optional recovery attempt:
 
 ```powershell
-pwsh .\RalphOnce.ps1 -Retry
+pwsh .\.ralph\scripts\RalphOnce.ps1 -Retry
 ```
 
 Override the model or effort for a particular task:
 
 ```powershell
-pwsh .\RalphOnce.ps1 -Model gpt-5.6-luna -ReasoningEffort high
+pwsh .\.ralph\scripts\RalphOnce.ps1 -Model gpt-5.6-luna -ReasoningEffort high
 ```
 
 ## 6. Bounded loop
 
 ```powershell
-pwsh .\Ralph.ps1
+pwsh .\.ralph\scripts\Ralph.ps1
 ```
 
 That means five maximum successful iterations. Another maximum:
 
 ```powershell
-pwsh .\Ralph.ps1 -Iterations 3
+pwsh .\.ralph\scripts\Ralph.ps1 -Iterations 3
 ```
 
 Bounded Ralph uses `implementation`:
@@ -275,7 +275,7 @@ To rebuild the sandbox:
 ```powershell
 sbx stop perfect-playlist-ralph
 sbx rm perfect-playlist-ralph
-pwsh .\Setup-Ralph.ps1 -SkipOpenAIOAuth -SkipLinearSecret -ForceBootstrap
+pwsh .\.ralph\scripts\Setup-Ralph.ps1 -SkipOpenAIOAuth -SkipLinearSecret -ForceBootstrap
 ```
 
 Do not delete the sandbox unless you are comfortable reinstalling its cached dependencies.

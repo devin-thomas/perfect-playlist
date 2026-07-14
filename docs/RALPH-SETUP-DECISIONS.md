@@ -140,7 +140,7 @@ This document records the interview that defined the Perfect Playlist Ralph runn
     **Answer: custom split.** Medium: 20 minutes. High recovery: 40 minutes.
 
 42. **Should automatic High recovery apply to RalphOnce?**  
-    **Answer: C.** Only when `RalphOnce.ps1 -Retry` is explicitly supplied.
+    **Answer: C.** Only when `.ralph/scripts/RalphOnce.ps1 -Retry` is explicitly supplied.
 
 43. **How does RalphOnce decide whether to commit without a machine marker?**  
     **Answer: A, hardened.** Parse exactly one `Status: Ready to Commit` line and exactly one valid `RALPH_CHANGED_PATHS` manifest. Any other status or malformed manifest means no commit, Linear finalization, or push.
@@ -178,7 +178,7 @@ This document records the interview that defined the Perfect Playlist Ralph runn
     **Answer: A.** Require PowerShell 7 (`pwsh`).
 
 54. **Where should the user-facing commands live?**  
-    **Answer: A.** `Ralph.ps1` and `RalphOnce.ps1` at the repository root; internals under `.ralph/`.
+    **Answer: revised.** `.ralph/scripts/Ralph.ps1`, `.ralph/scripts/RalphOnce.ps1`, and `.ralph/scripts/Setup-Ralph.ps1`; shared runner internals remain under `.ralph/`.
 
 55. **Should sandbox bootstrap be automatic?**  
     **Answer: A.** Yes. Check/create/reuse the sandbox and verify Codex, dependencies, and Linear MCP access before task execution.
@@ -204,17 +204,17 @@ The intended security property from questions 24 and 33 is preserved: the Linear
 
 ```powershell
 # Configure OAuth, Linear secret, sandbox, dependencies, and MCP smoke test
-pwsh .\Setup-Ralph.ps1
+pwsh .\.ralph\scripts\Setup-Ralph.ps1
 
 # One fresh session; no automatic retry
-pwsh .\RalphOnce.ps1
+pwsh .\.ralph\scripts\RalphOnce.ps1
 
 # One fresh session with one clean-state High recovery attempt
-pwsh .\RalphOnce.ps1 -Retry
+pwsh .\.ralph\scripts\RalphOnce.ps1 -Retry
 
 # Five maximum successful iterations on implementation
-pwsh .\Ralph.ps1
+pwsh .\.ralph\scripts\Ralph.ps1
 
 # Explicit maximum and model controls
-pwsh .\Ralph.ps1 -Iterations 3 -Model gpt-5.6-luna -ReasoningEffort medium
+pwsh .\.ralph\scripts\Ralph.ps1 -Iterations 3 -Model gpt-5.6-luna -ReasoningEffort medium
 ```

@@ -10,7 +10,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-Set-Location -LiteralPath $PSScriptRoot
-. "$PSScriptRoot/.ralph/Ralph.Core.ps1"
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+Set-Location -LiteralPath $repositoryRoot
+. (Join-Path $repositoryRoot ".ralph/Ralph.Core.ps1")
 
 exit (Invoke-RalphOnce -Model $Model -ReasoningEffort $ReasoningEffort -Retry:$Retry)
