@@ -1,5 +1,23 @@
-"""Public API for perfect-playlist."""
+"""Public TrackSequence API for deterministic Spotify playlist workflows."""
 
+from .errors import (
+    AuthConfigError,
+    ExportError,
+    InvalidTrackRefError,
+    PlaylistAddError,
+    PlaylistCreateError,
+    PlaylistVerificationError,
+    SourceAccessError,
+    SourceAuthenticationError,
+    SourceError,
+    SourceMalformedError,
+    SourceSpotifyError,
+    SpotifyApiError,
+    SpotifyAuthenticationRequiredError,
+    SpotifyExactError,
+    TrackLookupError,
+)
+from .export import next_available_path, serialize, track_links, write_export
 from .io import read_source, read_spotify_source, read_uri_lines
 from .models import (
     CreatedPlaylist,
@@ -10,12 +28,9 @@ from .models import (
     TrackSummary,
 )
 from .playlist import (
-    add_items_in_order,
     add_to_playlist,
     build_public_playlist,
     build_target_playlist,
-    chunked,
-    create_empty_playlist,
     create_playlist_from_uris,
 )
 from .search import get_tracks, search_tracks
@@ -31,17 +46,29 @@ from .verify import compare_track_sequences
 
 __all__ = [
     "CreatedPlaylist",
+    "AuthConfigError",
+    "ExportError",
+    "InvalidTrackRefError",
     "PlaylistAddResult",
+    "PlaylistAddError",
     "PlaylistCreateResult",
+    "PlaylistCreateError",
+    "PlaylistVerificationError",
+    "SourceAccessError",
+    "SourceAuthenticationError",
+    "SourceError",
+    "SourceMalformedError",
+    "SourceSpotifyError",
     "SourceVerificationResult",
+    "SpotifyApiError",
+    "SpotifyAuthenticationRequiredError",
+    "SpotifyExactError",
     "TrackSequence",
     "TrackSummary",
-    "add_items_in_order",
+    "TrackLookupError",
     "add_to_playlist",
     "build_target_playlist",
     "build_public_playlist",
-    "chunked",
-    "create_empty_playlist",
     "create_playlist_from_uris",
     "extract_track_id",
     "extract_playlist_id",
@@ -53,6 +80,10 @@ __all__ = [
     "read_source",
     "read_spotify_source",
     "read_uri_lines",
+    "next_available_path",
+    "serialize",
     "search_tracks",
+    "track_links",
+    "write_export",
     "compare_track_sequences",
 ]
