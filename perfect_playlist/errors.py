@@ -46,6 +46,10 @@ class SourceSpotifyError(SourceError):
     """Raised when Spotify fails while resolving a Source."""
 
 
+class ExportError(SpotifyExactError):
+    """Raised when a TrackSequence cannot be exported safely."""
+
+
 class SpotifyApiError(SpotifyExactError):
     """Raised when Spotify or Spotipy rejects an API operation."""
 

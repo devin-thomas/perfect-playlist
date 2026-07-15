@@ -10,6 +10,7 @@ from rich.console import Console
 from .auth import command_is_interactive
 from .client import SPOTIFY_API_EXCEPTIONS
 from .errors import InvalidTrackRefError, SpotifyExactError
+from .export import next_available_path, serialize, write_export
 from .io import read_source
 from .playlist import add_to_playlist, build_public_playlist, build_target_playlist
 from .track_refs import normalize_playlist_ref, normalize_track_ref
@@ -141,8 +142,26 @@ def export(
     out: Annotated[Path | None, typer.Option("--out", dir_okay=False)] = None,
     links: Annotated[bool, typer.Option("--links")] = False,
 ) -> None:
-    """Show the approved Export shell without partial filesystem behavior."""
-    _pending_command("export", "Parent 2")
+    """Render an exact Source as text, YAML, or JSON without overwriting files."""
+    sequence = _run(lambda: read_source(source))
+    if out is not None:
+        _run(lambda: write_export(sequence, out, links=links))
+        kind = "links" if links else "tracks"
+        typer.echo(f"Exported {len(sequence)} {kind} to {out}.")
+        return
+
+    _run(lambda: console.print(serialize(sequence, "txt", links=links), end=""))
+    if not command_is_interactive():
+        return
+
+    prompt = "Save links as text?" if links else "Save as YAML?"
+    if not typer.confirm(prompt, default=True):
+        return
+    suggested = Path("playlist_links.txt" if links else "playlist.yaml")
+    destination = _run(lambda: next_available_path(suggested))
+    _run(lambda: write_export(sequence, destination, links=links))
+    kind = "links" if links else "tracks"
+    typer.echo(f"Exported {len(sequence)} {kind} to {destination}.")
 
 
 @app.command("search")

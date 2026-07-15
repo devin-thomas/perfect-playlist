@@ -26,7 +26,6 @@ def test_auth_help_exposes_only_login_and_status() -> None:
     ("arguments", "parent"),
     [
         (["build", "tracks.txt"], "Source"),
-        (["export", "tracks.txt"], "Parent 2"),
         (["search", "query"], "Parent 3"),
         (["inspect", "spotify:track:123"], "Parent 3"),
     ],
