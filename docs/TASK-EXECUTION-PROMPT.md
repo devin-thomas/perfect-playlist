@@ -9,6 +9,7 @@ Repository: current repository root (expected local path: C:\dev\personal\spotif
 Spotify secrets file: resources/spotify-secrets.env
 Linear project: Perfect Playlist CLI
 Linear access: use the configured OAuth server named `linear`; do not require or retrieve `LINEAR_API_KEY` in Codex Desktop.
+Validation Python: use `C:\Users\lilgo\.codex\venvs\perfect-playlist\Scripts\python.exe` for repository checks when present. This clean Python 3.11 environment has the project, dev, and YAML dependencies installed and passed `pip check`, pytest, Ruff, and Mypy on 2026-07-14.
 Ordered parent issues: M-115, M-116, M-117
 Independent final review: M-27
 
@@ -32,6 +33,13 @@ Before changing anything:
 5. Use Linear to read M-115, M-116, M-117, M-27, and all children of the three parent issues, including each issue's status and blockers.
 6. Retry a transient Linear read or write failure up to three total attempts with a short delay. If Linear remains unavailable, do not guess or claim completion.
 7. If the OAuth Linear server requires authentication or cannot initialize, report that exact connection problem. Do not read the private secrets file or attempt API-key authentication from this manual Desktop workflow.
+
+Validation environment rule:
+
+- Prefer the configured validation Python above for `pytest`, Ruff, Mypy, pip checks, package builds, and CLI smoke tests. Invoke it explicitly rather than relying on the global `python` command.
+- If that environment is missing, create or repair an equivalent external Python 3.11 virtual environment outside the repository, install the project with `.[dev,yaml]`, and use its interpreter for the task.
+- The shared global Python installation previously contained unrelated `awsebcli` and OpenTelemetry conflicts. `awsebcli` has been removed, but global dependency state is not the project validation environment. Do not modify unrelated global packages or add them to `pyproject.toml` to make global `pip check` pass.
+- A clean validation environment's `pip check` is the authoritative dependency check. Report any remaining global-environment conflict separately as an environment note, not as a repository dependency failure.
 
 Select the task mechanically:
 
