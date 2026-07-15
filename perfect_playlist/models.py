@@ -76,3 +76,12 @@ class PlaylistCreateResult(BaseModel):
 class PlaylistAddResult(BaseModel):
     playlist: CreatedPlaylist
     added_uris: list[str]
+
+
+class SourceVerificationResult(BaseModel):
+    matches: bool
+    left_count: int
+    right_count: int
+    first_difference_position: int | None = None
+    left_uri: str | None = None
+    right_uri: str | None = None

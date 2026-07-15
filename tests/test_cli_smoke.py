@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from typer.testing import CliRunner
 
@@ -24,7 +26,6 @@ def test_auth_help_exposes_only_login_and_status() -> None:
     ("arguments", "parent"),
     [
         (["build", "tracks.txt"], "Source"),
-        (["verify", "left.txt", "right.txt"], "Parent 2"),
         (["export", "tracks.txt"], "Parent 2"),
         (["search", "query"], "Parent 3"),
         (["inspect", "spotify:track:123"], "Parent 3"),
@@ -55,6 +56,77 @@ def test_add_requires_target() -> None:
 
     assert result.exit_code == 2
     assert "--target" in result.output
+
+
+def test_verify_requires_two_sources() -> None:
+    result = CliRunner().invoke(app, ["verify", "left.txt"])
+
+    assert result.exit_code == 2
+    assert "Missing argument" in result.output
+
+
+def test_verify_reports_exact_match_and_empty_sources(tmp_path: Path) -> None:
+    left = tmp_path / "left.txt"
+    right = tmp_path / "right.txt"
+    left.write_text("spotify:track:354WZaV3u6cuzTG2PmpYwm\n", encoding="utf-8")
+    right.write_text("spotify:track:354WZaV3u6cuzTG2PmpYwm\n", encoding="utf-8")
+
+    result = CliRunner().invoke(app, ["verify", str(left), str(right)])
+
+    assert result.exit_code == 0
+    assert "Verified: both sources contain 1 tracks and they all match." in result.output
+
+
+def test_verify_reports_empty_to_empty_success(tmp_path: Path) -> None:
+    left = tmp_path / "left.txt"
+    right = tmp_path / "right.txt"
+    left.write_text("", encoding="utf-8")
+    right.write_text("", encoding="utf-8")
+
+    result = CliRunner().invoke(app, ["verify", str(left), str(right)])
+
+    assert result.exit_code == 0
+    assert "Verified: both sources contain 0 tracks and they all match." in result.output
+
+
+def test_verify_reports_only_count_diagnostics(tmp_path: Path) -> None:
+    left = tmp_path / "left.txt"
+    right = tmp_path / "right.txt"
+    left.write_text("spotify:track:354WZaV3u6cuzTG2PmpYwm\n", encoding="utf-8")
+    right.write_text("", encoding="utf-8")
+
+    result = CliRunner().invoke(app, ["verify", str(left), str(right)])
+
+    assert result.exit_code == 1
+    assert result.output.splitlines() == [
+        "Not verified: track counts differ.",
+        "left.txt: 1",
+        "right.txt: 0",
+    ]
+
+
+def test_verify_reports_only_first_positional_difference(tmp_path: Path) -> None:
+    left = tmp_path / "left.txt"
+    right = tmp_path / "right.txt"
+    left.write_text(
+        "spotify:track:354WZaV3u6cuzTG2PmpYwm\n"
+        "spotify:track:78APbsosmvDYIwZHjzC5ZE\n",
+        encoding="utf-8",
+    )
+    right.write_text(
+        "spotify:track:354WZaV3u6cuzTG2PmpYwm\n"
+        "spotify:track:3REnVcPtMXDxR4g8sZ4QtM\n",
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(app, ["verify", str(left), str(right)])
+
+    assert result.exit_code == 1
+    assert result.output.splitlines() == [
+        "Not verified at position 2.",
+        "left.txt: spotify:track:78APbsosmvDYIwZHjzC5ZE",
+        "right.txt: spotify:track:3REnVcPtMXDxR4g8sZ4QtM",
+    ]
 
 
 def test_build_rejects_name_and_target_together() -> None:

@@ -7,10 +7,9 @@ Branch: `main`
 Current checkpoint: Parent 1 is complete and Parent 2 is in progress through
 owned empty-target Build. The canonical TrackSequence, Source pipeline,
 authentication behavior, and top-level command shell are present. Parent 2
-command `add` now has its append-only implementation. Parent 2 commands
-`verify` and `export`, plus Parent 3 commands (`search` and `inspect`), fail
-closed with exit code `2`; they do not write playlists or files or claim
-verification.
+commands `add` and `verify` now have their implementations. Parent 2 command
+`export`, plus Parent 3 commands (`search` and `inspect`), fail closed with
+exit code `2`; they do not write playlists or files or claim verification.
 
 The authoritative behavior is in `CLI-CONTRACT.md`; the ordered work and
 current boundary are in `IMPLEMENTATION-PLAN.md`.
@@ -177,7 +176,7 @@ deprecated `user_playlist_create()` helper to
 2. Do not ship private creation as passing until a live create persists
    `public=false` and the full credentialed suite reports zero failures.
 
-Parent 2 implementation is in progress; append-only Add is the latest
+Parent 2 implementation is in progress; peer Source Verify is the latest
 completed workflow checkpoint.
 
 ## Important Safety Notes

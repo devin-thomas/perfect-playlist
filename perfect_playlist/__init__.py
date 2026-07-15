@@ -5,6 +5,7 @@ from .models import (
     CreatedPlaylist,
     PlaylistAddResult,
     PlaylistCreateResult,
+    SourceVerificationResult,
     TrackSequence,
     TrackSummary,
 )
@@ -26,11 +27,13 @@ from .track_refs import (
     normalize_playlist_ref,
     normalize_track_ref,
 )
+from .verify import compare_track_sequences
 
 __all__ = [
     "CreatedPlaylist",
     "PlaylistAddResult",
     "PlaylistCreateResult",
+    "SourceVerificationResult",
     "TrackSequence",
     "TrackSummary",
     "add_items_in_order",
@@ -51,4 +54,5 @@ __all__ = [
     "read_spotify_source",
     "read_uri_lines",
     "search_tracks",
+    "compare_track_sequences",
 ]

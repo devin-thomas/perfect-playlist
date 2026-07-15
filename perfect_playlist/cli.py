@@ -9,9 +9,11 @@ from rich.console import Console
 
 from .auth import command_is_interactive
 from .client import SPOTIFY_API_EXCEPTIONS
-from .errors import SpotifyExactError
+from .errors import InvalidTrackRefError, SpotifyExactError
 from .io import read_source
 from .playlist import add_to_playlist, build_public_playlist, build_target_playlist
+from .track_refs import normalize_playlist_ref, normalize_track_ref
+from .verify import compare_track_sequences
 
 app = typer.Typer(help="Build deterministic Spotify playlists from exact track Sources.")
 auth_app = typer.Typer(help="Authenticate with Spotify.")
@@ -98,8 +100,39 @@ def add(source: str = typer.Argument(...), target: str = typer.Option(..., "--ta
 
 @app.command("verify")
 def verify(left: str = typer.Argument(...), right: str = typer.Argument(...)) -> None:
-    """Show the approved Verify shell without partial comparison behavior."""
-    _pending_command("verify", "Parent 2")
+    """Compare two Sources as exact TrackSequences."""
+    left_sequence = _run(lambda: read_source(left))
+    right_sequence = _run(lambda: read_source(right))
+    result = compare_track_sequences(left_sequence, right_sequence)
+    left_label = _source_label(left)
+    right_label = _source_label(right)
+
+    if result.matches:
+        console.print(
+            f"Verified: both sources contain {result.left_count} tracks and they all match."
+        )
+        return
+    if result.left_count != result.right_count:
+        console.print("Not verified: track counts differ.")
+        console.print(f"{left_label}: {result.left_count}")
+        console.print(f"{right_label}: {result.right_count}")
+    else:
+        console.print(f"Not verified at position {result.first_difference_position}.")
+        console.print(f"{left_label}: {result.left_uri}")
+        console.print(f"{right_label}: {result.right_uri}")
+    raise typer.Exit(1)
+
+
+def _source_label(source: str) -> str:
+    path = Path(source)
+    if path.is_file():
+        return path.name
+    for normalizer in (normalize_track_ref, normalize_playlist_ref):
+        try:
+            return normalizer(source)
+        except InvalidTrackRefError:
+            continue
+    return source
 
 
 @app.command("export")

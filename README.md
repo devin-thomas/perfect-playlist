@@ -30,7 +30,7 @@ This project is not trying to replace recommendation systems. It provides the re
 - `search` and `inspect` expose facts without choosing tracks or writing playlists.
 - Repair and natural-language resolve workflows are removed from the interface.
 
-The approved CLI is specified in [the CLI contract](docs/CLI-CONTRACT.md). Parent 1 is complete: the canonical TrackSequence, Source pipeline, authentication behavior, and top-level command shell are in place. Parent 2 is in progress: Build and append-only Add are implemented, while `verify` and `export` remain fail closed; Parent 3 `search` and `inspect` do the same.
+The approved CLI is specified in [the CLI contract](docs/CLI-CONTRACT.md). Parent 1 is complete: the canonical TrackSequence, Source pipeline, authentication behavior, and top-level command shell are in place. Parent 2 is in progress: Build, append-only Add, and peer Source Verify are implemented, while `export` remains fail closed; Parent 3 `search` and `inspect` do the same.
 
 ## Documentation
 
