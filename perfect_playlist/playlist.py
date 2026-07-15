@@ -10,7 +10,7 @@ from .errors import (
     PlaylistCreateError,
     PlaylistVerificationError,
 )
-from .models import CreatedPlaylist, PlaylistCreateResult, TrackSequence
+from .models import CreatedPlaylist, PlaylistAddResult, PlaylistCreateResult, TrackSequence
 from .track_refs import normalize_playlist_ref, normalize_track_ref
 
 T = TypeVar("T")
@@ -88,6 +88,99 @@ def add_items_in_order(
         snapshot_id = response.get("snapshot_id", snapshot_id)
 
     return snapshot_id
+
+
+def add_to_playlist(
+    sequence: TrackSequence,
+    target: str,
+    *,
+    client: PlaylistClient | None = None,
+) -> PlaylistAddResult:
+    """Append a non-empty sequence to a writable playlist and verify the append."""
+    if not sequence.uris:
+        raise PlaylistAddError("Add requires a non-empty TrackSequence.")
+
+    try:
+        playlist_uri = normalize_playlist_ref(target)
+    except InvalidTrackRefError as exc:
+        raise PlaylistAddError(str(exc)) from exc
+
+    playlist_id = playlist_uri.rsplit(":", 1)[-1]
+    sp = client or get_spotify_client()
+    playlist = _read_add_target(playlist_id, sp)
+
+    try:
+        user = sp.current_user()
+    except SPOTIFY_API_EXCEPTIONS as exc:
+        raise PlaylistAddError("Could not identify the signed-in Spotify user.") from exc
+    user_id = user.get("id")
+    owner = playlist.get("owner")
+    owner_id = owner.get("id") if isinstance(owner, dict) else None
+    collaborative = playlist.get("collaborative")
+    if not isinstance(user_id, str) or not user_id:
+        raise PlaylistAddError("Spotify did not identify the signed-in user.")
+    if collaborative is not True and owner_id != user_id:
+        raise PlaylistAddError(
+            "Spotify does not permit the signed-in user to modify this playlist."
+        )
+
+    tracks = playlist.get("tracks")
+    before_count = tracks.get("total") if isinstance(tracks, dict) else None
+    name = playlist.get("name")
+    external_urls = playlist.get("external_urls")
+    url = external_urls.get("spotify") if isinstance(external_urls, dict) else None
+    if not isinstance(before_count, int) or before_count < 0:
+        raise PlaylistAddError("Spotify returned an invalid target track count.")
+    if not isinstance(name, str) or not isinstance(url, str):
+        raise PlaylistAddError("Spotify returned an invalid Add target.")
+
+    snapshot_id = add_items_in_order(
+        playlist_id,
+        sequence.uris,
+        playlist_url=url,
+        client=sp,
+    )
+    try:
+        stored = _read_playlist_uris(playlist_id, sp)
+    except SPOTIFY_API_EXCEPTIONS + (InvalidTrackRefError,) as exc:
+        raise PlaylistVerificationError(
+            f"Could not verify appended tracks for playlist {url}."
+        ) from exc
+
+    expected_count = before_count + len(sequence.uris)
+    if len(stored) != expected_count:
+        raise PlaylistVerificationError(
+            f"Target changed concurrently; expected {expected_count} tracks after Add but "
+            f"Spotify returned {len(stored)} for {url}."
+        )
+    if stored[-len(sequence.uris) :] != list(sequence.uris):
+        raise PlaylistVerificationError(
+            f"Target changed concurrently; appended tracks could not be verified for {url}."
+        )
+
+    return PlaylistAddResult(
+        playlist=CreatedPlaylist(
+            id=playlist_id,
+            uri=playlist_uri,
+            url=url,
+            name=name,
+            snapshot_id=snapshot_id,
+        ),
+        added_uris=list(sequence.uris),
+    )
+
+
+def _read_add_target(playlist_id: str, client: PlaylistClient) -> dict[str, object]:
+    try:
+        playlist = client.playlist(
+            playlist_id,
+            fields="id,uri,name,public,collaborative,owner(id),tracks(total),external_urls(spotify)",
+        )
+    except SPOTIFY_API_EXCEPTIONS as exc:
+        raise PlaylistAddError(f"Could not read Spotify playlist target {playlist_id}.") from exc
+    if not isinstance(playlist, dict):
+        raise PlaylistAddError("Spotify returned an invalid Add target.")
+    return playlist
 
 
 def create_playlist_from_uris(

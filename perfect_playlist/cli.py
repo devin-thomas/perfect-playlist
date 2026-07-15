@@ -11,7 +11,7 @@ from .auth import command_is_interactive
 from .client import SPOTIFY_API_EXCEPTIONS
 from .errors import SpotifyExactError
 from .io import read_source
-from .playlist import build_public_playlist, build_target_playlist
+from .playlist import add_to_playlist, build_public_playlist, build_target_playlist
 
 app = typer.Typer(help="Build deterministic Spotify playlists from exact track Sources.")
 auth_app = typer.Typer(help="Authenticate with Spotify.")
@@ -87,8 +87,13 @@ def build(
 
 @app.command("add")
 def add(source: str = typer.Argument(...), target: str = typer.Option(..., "--target")) -> None:
-    """Show the approved Add shell without performing a partial workflow."""
-    _pending_command("add", "Parent 2")
+    """Append an exact Source to a writable Spotify playlist."""
+    sequence = _run(lambda: read_source(source))
+    result = _run(lambda: add_to_playlist(sequence, target))
+    console.print(
+        f'Added and verified {len(result.added_uris)} tracks in "{result.playlist.name}": '
+        f"{result.playlist.url}"
+    )
 
 
 @app.command("verify")

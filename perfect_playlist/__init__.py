@@ -3,12 +3,14 @@
 from .io import read_source, read_spotify_source, read_uri_lines
 from .models import (
     CreatedPlaylist,
+    PlaylistAddResult,
     PlaylistCreateResult,
     TrackSequence,
     TrackSummary,
 )
 from .playlist import (
     add_items_in_order,
+    add_to_playlist,
     build_public_playlist,
     build_target_playlist,
     chunked,
@@ -27,10 +29,12 @@ from .track_refs import (
 
 __all__ = [
     "CreatedPlaylist",
+    "PlaylistAddResult",
     "PlaylistCreateResult",
     "TrackSequence",
     "TrackSummary",
     "add_items_in_order",
+    "add_to_playlist",
     "build_target_playlist",
     "build_public_playlist",
     "chunked",

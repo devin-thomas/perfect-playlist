@@ -71,3 +71,8 @@ class CreatedPlaylist(BaseModel):
 class PlaylistCreateResult(BaseModel):
     playlist: CreatedPlaylist
     added_uris: list[str]
+
+
+class PlaylistAddResult(BaseModel):
+    playlist: CreatedPlaylist
+    added_uris: list[str]

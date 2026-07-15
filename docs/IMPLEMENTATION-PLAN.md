@@ -20,7 +20,7 @@ Children are also dependency-chained in coordinate order: `[1.0]` through `[1.6]
 
 Parent 1 is complete. The repository contains a root-level Python 3.11 package, one URI-only TrackSequence, extension-driven and Spotify Source ingestion, interactive/non-interactive authentication, typed Spotify adapter boundaries, and the approved top-level command shell. Superseded grouped commands, repair, resolve, dry-run, position-based add, prefix verification, and metadata-rich manifest workflows have been removed.
 
-Parent 2 is in progress. New-public Build and owned empty-target Build implement their approved workflows; `add`, `verify`, and `export` remain fail closed with exit code `2` without Spotify or filesystem writes until their assigned tasks. Parent 3 `search` and `inspect` shells follow the same boundary. Existing lower-level playlist and lookup primitives are migration inputs for their assigned future tasks, not shipped implementations of those commands.
+Parent 2 is in progress. New-public Build, owned empty-target Build, and append-only Add implement their approved workflows; `verify` and `export` remain fail closed with exit code `2` without Spotify or filesystem writes until their assigned tasks. Parent 3 `search` and `inspect` shells follow the same boundary. Existing lower-level playlist and lookup primitives are migration inputs for their assigned future tasks, not shipped implementations of those commands.
 
 ## Credential Decision
 

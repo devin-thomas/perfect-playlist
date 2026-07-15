@@ -13,6 +13,7 @@ from perfect_playlist.errors import (
 from perfect_playlist.models import TrackSequence
 from perfect_playlist.playlist import (
     add_items_in_order,
+    add_to_playlist,
     build_public_playlist,
     build_target_playlist,
     create_playlist_from_uris,
@@ -143,6 +144,47 @@ class TargetPlaylistClient(PlaylistClient):
 
     def playlist(self, playlist_id: str, fields: str) -> dict[str, object]:
         return self.target
+
+
+class AddPlaylistClient(TargetPlaylistClient):
+    def __init__(
+        self,
+        playlist_items: list[str],
+        *,
+        collaborative: bool = False,
+        owner: str = "user-123",
+        concurrent_extra: str | None = None,
+        wrong_append: bool = False,
+        fail_after_write: bool = False,
+    ) -> None:
+        super().__init__(
+            playlist_items=playlist_items,
+            public=False,
+            owner=owner,
+            collaborative=collaborative,
+            total=len(playlist_items),
+        )
+        self.concurrent_extra = concurrent_extra
+        self.wrong_append = wrong_append
+        self.fail_after_write = fail_after_write
+        self.playlist_reads = 0
+
+    def playlist(self, playlist_id: str, fields: str) -> dict[str, object]:
+        self.playlist_reads += 1
+        return self.target
+
+    def playlist_add_items(self, playlist_id: str, items: Sequence[str]) -> dict[str, Any]:
+        if self.wrong_append:
+            self._playlist_items.extend([_track_uri(99) for _ in items])
+        else:
+            self._playlist_items.extend(items)
+        if self.concurrent_extra is not None:
+            self._playlist_items.append(self.concurrent_extra)
+        self.target["tracks"] = {"total": len(self._playlist_items)}
+        self.added.append({"playlist_id": playlist_id, "items": list(items)})
+        if self.fail_after_write:
+            raise SpotifyException(500, -1, "server error after write")
+        return {"snapshot_id": "snapshot-add"}
 
 
 def test_create_playlist_validates_before_write() -> None:
@@ -321,3 +363,80 @@ def test_build_target_rejects_empty_sequence_before_reading_target() -> None:
         )
 
     assert client.added == []
+
+
+@pytest.mark.parametrize("collaborative", [False, True])
+def test_add_accepts_owned_or_collaborative_targets(collaborative: bool) -> None:
+    existing = [_track_uri(1)]
+    source = [_track_uri(2), _track_uri(3)]
+    client = AddPlaylistClient(existing, collaborative=collaborative)
+
+    result = add_to_playlist(
+        TrackSequence(uris=tuple(source)),
+        "spotify:playlist:1234567890123456789012",
+        client=client,
+    )
+
+    assert result.added_uris == source
+    assert client.added == [{"playlist_id": "1234567890123456789012", "items": source}]
+    assert client.target["public"] is False
+
+
+def test_add_rejects_empty_source_before_reading_target() -> None:
+    client = AddPlaylistClient([_track_uri(1)])
+
+    with pytest.raises(PlaylistAddError, match="non-empty"):
+        add_to_playlist(TrackSequence(), "spotify:playlist:1234567890123456789012", client=client)
+
+    assert client.playlist_reads == 0
+    assert client.added == []
+
+
+def test_add_rejects_non_owned_non_collaborative_target() -> None:
+    client = AddPlaylistClient([_track_uri(1)], owner="other-user")
+
+    with pytest.raises(PlaylistAddError, match="permit"):
+        add_to_playlist(
+            TrackSequence(uris=(_track_uri(2),)),
+            "spotify:playlist:1234567890123456789012",
+            client=client,
+        )
+
+    assert client.added == []
+
+
+@pytest.mark.parametrize(
+    ("concurrent_extra", "wrong_append", "message"),
+    [
+        (_track_uri(9), False, "changed concurrently"),
+        (None, True, "appended tracks could not be verified"),
+    ],
+)
+def test_add_rejects_concurrent_or_unverified_append(
+    concurrent_extra: str | None, wrong_append: bool, message: str
+) -> None:
+    client = AddPlaylistClient(
+        [_track_uri(1)], concurrent_extra=concurrent_extra, wrong_append=wrong_append
+    )
+
+    with pytest.raises(PlaylistVerificationError, match=message):
+        add_to_playlist(
+            TrackSequence(uris=(_track_uri(2),)),
+            "spotify:playlist:1234567890123456789012",
+            client=client,
+        )
+
+
+def test_add_surfaces_partial_write_without_success() -> None:
+    client = AddPlaylistClient([_track_uri(1)], fail_after_write=True)
+
+    with pytest.raises(PlaylistAddError, match="chunk 1"):
+        add_to_playlist(
+            TrackSequence(uris=(_track_uri(2),)),
+            "spotify:playlist:1234567890123456789012",
+            client=client,
+        )
+
+    assert client.added == [
+        {"playlist_id": "1234567890123456789012", "items": [_track_uri(2)]}
+    ]

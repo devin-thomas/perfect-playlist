@@ -24,7 +24,6 @@ def test_auth_help_exposes_only_login_and_status() -> None:
     ("arguments", "parent"),
     [
         (["build", "tracks.txt"], "Source"),
-        (["add", "tracks.txt", "--target", "spotify:playlist:123"], "Parent 2"),
         (["verify", "left.txt", "right.txt"], "Parent 2"),
         (["export", "tracks.txt"], "Parent 2"),
         (["search", "query"], "Parent 3"),
@@ -38,7 +37,7 @@ def test_successor_commands_fail_closed_until_their_parent_starts(
 
     assert result.exit_code == 2
     assert parent in result.output
-    if arguments[0] == "build":
+    if arguments[0] in {"build", "add"}:
         assert "No Spotify or filesystem changes were made" not in result.output
     else:
         assert "No Spotify or filesystem changes were made" in " ".join(result.output.split())
@@ -49,6 +48,13 @@ def test_export_help_includes_the_approved_links_option() -> None:
 
     assert result.exit_code == 0
     assert "--links" in result.output
+
+
+def test_add_requires_target() -> None:
+    result = CliRunner().invoke(app, ["add", "tracks.txt"])
+
+    assert result.exit_code == 2
+    assert "--target" in result.output
 
 
 def test_build_rejects_name_and_target_together() -> None:
