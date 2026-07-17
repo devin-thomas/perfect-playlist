@@ -1,9 +1,12 @@
+import json
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from typer.testing import CliRunner
 
 from perfect_playlist.cli import app
+from perfect_playlist.models import TrackSummary
 
 
 def test_cli_help_exposes_only_action_commands() -> None:
@@ -26,7 +29,6 @@ def test_auth_help_exposes_only_login_and_status() -> None:
     ("arguments", "parent"),
     [
         (["build", "tracks.txt"], "Source"),
-        (["search", "query"], "Parent 3"),
         (["inspect", "spotify:track:123"], "Parent 3"),
     ],
 )
@@ -41,6 +43,52 @@ def test_successor_commands_fail_closed_until_their_parent_starts(
         assert "No Spotify or filesystem changes were made" not in result.output
     else:
         assert "No Spotify or filesystem changes were made" in " ".join(result.output.split())
+
+
+def test_search_human_output_includes_candidate_fields() -> None:
+    result = TrackSummary(
+        uri="spotify:track:354WZaV3u6cuzTG2PmpYwm",
+        url="https://open.spotify.com/track/354WZaV3u6cuzTG2PmpYwm",
+        title="Get The Message",
+        artists=["The Paradox"],
+        duration_ms=162000,
+        explicit=True,
+    )
+
+    with patch("perfect_playlist.cli.search_tracks", return_value=[result]) as search_mock:
+        response = CliRunner().invoke(app, ["search", "get the message"])
+
+    assert response.exit_code == 0
+    assert "1. Get The Message - The Paradox" in response.output
+    assert "Explicit: yes" in response.output
+    assert "Duration: 2:42" in response.output
+    assert result.uri in response.output
+    assert result.url in response.output
+    search_mock.assert_called_once_with("get the message", limit=4)
+
+
+def test_search_json_output_is_structured_candidate_data() -> None:
+    result = TrackSummary(
+        uri="spotify:track:354WZaV3u6cuzTG2PmpYwm",
+        url="https://open.spotify.com/track/354WZaV3u6cuzTG2PmpYwm",
+        title="Get The Message",
+        artists=["The Paradox"],
+        duration_ms=162000,
+        explicit=True,
+    )
+
+    with patch("perfect_playlist.cli.search_tracks", return_value=[result]):
+        response = CliRunner().invoke(app, ["search", "query", "--json", "--limit", "2"])
+
+    assert response.exit_code == 0
+    assert json.loads(response.output) == {"results": [result.model_dump()]}
+
+
+def test_search_rejects_empty_query() -> None:
+    response = CliRunner().invoke(app, ["search", "   "])
+
+    assert response.exit_code == 2
+    assert "Query must not be empty" in response.output
 
 
 def test_export_help_includes_the_approved_links_option() -> None:

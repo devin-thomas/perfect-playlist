@@ -26,8 +26,8 @@ def _track_summary(track: dict[str, Any]) -> TrackSummary:
 def search_tracks(
     query: str,
     *,
-    limit: int = 10,
-    market: str | None = "US",
+    limit: int = 4,
+    market: str | None = None,
     client: TrackLookupClient | None = None,
 ) -> list[TrackSummary]:
     """Search Spotify track candidates without writing to Spotify."""

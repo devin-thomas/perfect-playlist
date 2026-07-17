@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated, NoReturn, TypeVar
@@ -13,6 +14,7 @@ from .errors import InvalidTrackRefError, SpotifyExactError
 from .export import next_available_path, serialize, write_export
 from .io import read_source
 from .playlist import add_to_playlist, build_public_playlist, build_target_playlist
+from .search import search_tracks
 from .track_refs import normalize_playlist_ref, normalize_track_ref
 from .verify import compare_track_sequences
 
@@ -170,8 +172,32 @@ def search(
     limit: Annotated[int, typer.Option("--limit", min=1, max=10)] = 4,
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    """Show the approved Search shell without starting Parent 3 behavior."""
-    _pending_command("search", "Parent 3")
+    """Find exact Spotify track candidates without writing or choosing tracks."""
+    if not query.strip():
+        raise typer.BadParameter("Query must not be empty.")
+
+    results = _run(lambda: search_tracks(query, limit=limit))
+    if json_output:
+        typer.echo(json.dumps({"results": [result.model_dump() for result in results]}))
+        return
+
+    for index, result in enumerate(results, start=1):
+        artists = ", ".join(result.artists) or "Unknown artist"
+        explicit = "yes" if result.explicit else "no"
+        duration = _format_duration(result.duration_ms)
+        typer.echo(f"{index}. {result.title} - {artists}")
+        typer.echo(f"   Explicit: {explicit}")
+        typer.echo(f"   Duration: {duration}")
+        typer.echo(f"   URI: {result.uri}")
+        typer.echo(f"   Link: {result.url}")
+
+
+def _format_duration(duration_ms: int | None) -> str:
+    if duration_ms is None:
+        return "unknown"
+    total_seconds = duration_ms // 1000
+    minutes, seconds = divmod(total_seconds, 60)
+    return f"{minutes}:{seconds:02d}"
 
 
 @app.command("inspect")

@@ -55,10 +55,10 @@ class FailingSearchClient(SearchClient):
 def test_search_tracks_returns_copyable_uris() -> None:
     client = SearchClient()
 
-    results = search_tracks('track:"Get The Message"', limit=5, market="US", client=client)
+    results = search_tracks('track:"Get The Message"', limit=5, client=client)
 
     assert client.search_calls == [
-        {"q": 'track:"Get The Message"', "type": "track", "limit": 5, "market": "US"},
+        {"q": 'track:"Get The Message"', "type": "track", "limit": 5, "market": None},
     ]
     assert results[0].title == "Get The Message"
     assert results[0].artists == ["The Paradox"]
