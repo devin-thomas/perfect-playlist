@@ -19,19 +19,40 @@ fixtures named `perfect-playlist ... - DELETE ME - <UTC timestamp>`:
 
 Credentialed command result: `2 passed, 0 skipped`.
 
-The account did not expose a safe pre-existing private empty target or
-collaborative target fixture for this pass. No private or collaborative
-playlist was modified, and no fixture URL requires deletion. Private creation
-remains fail-closed when Spotify persists a requested private create as public;
-offline tests cover empty, eligibility, partial-write, and persisted-state
-guards.
+The credentialed account exposed an owned empty private target. The live test
+filled it with the exact Source, verified the private target Source, and
+removed the test tracks in cleanup, restoring it to empty. No collaborative
+target was available safely, so no collaborative playlist was modified.
+Private creation remains fail-closed when Spotify persists a requested private
+create as public; offline tests cover empty, eligibility, partial-write, and
+persisted-state guards.
 
-Current checkpoint: Parent 1 is complete and Parent 2 is in progress through
-owned empty-target Build. The canonical TrackSequence, Source pipeline,
-authentication behavior, and top-level command shell are present. Parent 2
-commands `add` and `verify` now have their implementations. Parent 2 command
-`export`, plus Parent 3 commands (`search` and `inspect`), fail closed with
-exit code `2`; they do not write playlists or files or claim verification.
+## Final M-25 Validation Matrix (2026-07-17)
+
+Commands used the configured Python 3.11 environment and separate temporary
+directories outside the repository to avoid pytest temp-directory contention:
+
+- `$env:PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS='0'; python -m pytest
+  --basetemp <external-temp>`: `126 passed, 2 skipped`; both skips are the
+  explicitly opt-in live tests.
+- `$env:PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS='1'; python -m pytest
+  --basetemp <external-temp>`: `128 passed, 0 skipped`.
+- `python -m ruff check --no-cache perfect_playlist tests`: passed.
+- `python -m mypy --no-incremental perfect_playlist tests`: passed with no
+  issues in 29 source files.
+- `python -m pip check`: no broken requirements.
+
+The credentialed run exercised public Build, owned empty public and private
+target Build, owned Add, live Verify, live Export round-trip, and cleanup. The
+public fixtures were timestamped `DELETE ME` playlists and unfollowed in
+`finally` cleanup. The private target was restored to empty. Ephemeral fixture
+URLs are intentionally not retained because they are deleted or restored by
+the test; historical QA URLs remain documented below.
+
+Current checkpoint: Parent 1, Parent 2, and Parent 3 implementation work is
+complete. The canonical TrackSequence, Source pipeline, authentication
+behavior, action-based CLI, deterministic agent guidance, and offline/live QA
+matrix are present. M-27 remains the independent final release review.
 
 The authoritative behavior is in `CLI-CONTRACT.md`; the ordered work and
 current boundary are in `IMPLEMENTATION-PLAN.md`.
