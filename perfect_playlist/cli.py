@@ -14,7 +14,7 @@ from .errors import InvalidTrackRefError, SpotifyExactError
 from .export import next_available_path, serialize, write_export
 from .io import read_source
 from .playlist import add_to_playlist, build_public_playlist, build_target_playlist
-from .search import search_tracks
+from .search import get_tracks, search_tracks
 from .track_refs import normalize_playlist_ref, normalize_track_ref
 from .verify import compare_track_sequences
 
@@ -205,8 +205,25 @@ def inspect(
     track_reference: str = typer.Argument(...),
     json_output: Annotated[bool, typer.Option("--json")] = False,
 ) -> None:
-    """Show the approved Inspect shell without starting Parent 3 behavior."""
-    _pending_command("inspect", "Parent 3")
+    """Show exact metadata for one Spotify track reference."""
+    if not track_reference.strip():
+        raise typer.BadParameter("Track reference must not be empty.")
+
+    results = _run(lambda: get_tracks([track_reference]))
+    if not results:
+        raise typer.BadParameter("Spotify returned no accessible track for this reference.")
+    result = results[0]
+    if json_output:
+        typer.echo(json.dumps({"track": result.model_dump()}))
+        return
+
+    artists = ", ".join(result.artists) or "Unknown artist"
+    explicit = "yes" if result.explicit else "no"
+    typer.echo(f"{result.title} - {artists}")
+    typer.echo(f"Explicit: {explicit}")
+    typer.echo(f"Duration: {_format_duration(result.duration_ms)}")
+    typer.echo(f"URI: {result.uri}")
+    typer.echo(f"Link: {result.url}")
 
 
 if __name__ == "__main__":

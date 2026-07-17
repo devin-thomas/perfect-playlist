@@ -29,7 +29,6 @@ def test_auth_help_exposes_only_login_and_status() -> None:
     ("arguments", "parent"),
     [
         (["build", "tracks.txt"], "Source"),
-        (["inspect", "spotify:track:123"], "Parent 3"),
     ],
 )
 def test_successor_commands_fail_closed_until_their_parent_starts(
@@ -89,6 +88,63 @@ def test_search_rejects_empty_query() -> None:
 
     assert response.exit_code == 2
     assert "Query must not be empty" in response.output
+
+
+def test_inspect_human_output_includes_metadata() -> None:
+    result = TrackSummary(
+        uri="spotify:track:354WZaV3u6cuzTG2PmpYwm",
+        url="https://open.spotify.com/track/354WZaV3u6cuzTG2PmpYwm",
+        title="Get The Message",
+        artists=["The Paradox"],
+        duration_ms=162000,
+        explicit=True,
+    )
+
+    with patch("perfect_playlist.cli.get_tracks", return_value=[result]) as get_tracks_mock:
+        response = CliRunner().invoke(
+            app, ["inspect", "https://open.spotify.com/track/354WZaV3u6cuzTG2PmpYwm"]
+        )
+
+    assert response.exit_code == 0
+    assert "Get The Message - The Paradox" in response.output
+    assert "Explicit: yes" in response.output
+    assert "Duration: 2:42" in response.output
+    assert result.uri in response.output
+    assert result.url in response.output
+    get_tracks_mock.assert_called_once_with(
+        ["https://open.spotify.com/track/354WZaV3u6cuzTG2PmpYwm"]
+    )
+
+
+def test_inspect_json_output_is_structured_track_data() -> None:
+    result = TrackSummary(
+        uri="spotify:track:354WZaV3u6cuzTG2PmpYwm",
+        url="https://open.spotify.com/track/354WZaV3u6cuzTG2PmpYwm",
+        title="Get The Message",
+        artists=["The Paradox"],
+        duration_ms=162000,
+        explicit=True,
+    )
+
+    with patch("perfect_playlist.cli.get_tracks", return_value=[result]):
+        response = CliRunner().invoke(
+            app,
+            ["inspect", "spotify:track:354WZaV3u6cuzTG2PmpYwm", "--json"],
+        )
+
+    assert response.exit_code == 0
+    assert json.loads(response.output) == {"track": result.model_dump()}
+
+
+@pytest.mark.parametrize(
+    "reference",
+    ["", "   ", "354WZaV3u6cuzTG2PmpYwm", "spotify:playlist:37i9dQZF1DXcBWIGoYBM5M"],
+)
+def test_inspect_rejects_invalid_references(reference: str) -> None:
+    response = CliRunner().invoke(app, ["inspect", reference])
+
+    assert response.exit_code == 2
+    assert "Spotify track URI or URL" in response.output or "must not be empty" in response.output
 
 
 def test_export_help_includes_the_approved_links_option() -> None:

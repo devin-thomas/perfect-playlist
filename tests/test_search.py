@@ -74,7 +74,7 @@ def test_get_tracks_normalizes_inputs() -> None:
         client=client,
     )
 
-    assert client.track_calls == [{"tracks": ["354WZaV3u6cuzTG2PmpYwm"], "market": "US"}]
+    assert client.track_calls == [{"tracks": ["354WZaV3u6cuzTG2PmpYwm"], "market": None}]
     assert results[0].url == "https://open.spotify.com/track/354WZaV3u6cuzTG2PmpYwm"
 
 

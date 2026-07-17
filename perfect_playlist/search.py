@@ -43,7 +43,7 @@ def search_tracks(
 def get_tracks(
     uris: Sequence[str],
     *,
-    market: str | None = "US",
+    market: str | None = None,
     client: TrackLookupClient | None = None,
 ) -> list[TrackSummary]:
     """Fetch metadata for exact Spotify track references."""
