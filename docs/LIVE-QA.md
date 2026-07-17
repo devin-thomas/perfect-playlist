@@ -4,6 +4,28 @@ Date: 2026-07-13
 Repository: `C:\dev\personal\spotify-playlist-modify`
 Branch: `main`
 
+## Current M-133 Integration Coverage (2026-07-17)
+
+The credentialed integration suite now runs two reversible scenarios with
+fixtures named `perfect-playlist ... - DELETE ME - <UTC timestamp>`:
+
+- New public Build creates a playlist, reads it back as a Spotify Source, and
+  unfollows it during cleanup.
+- Owned empty public-target Build fills a dynamically created empty playlist;
+  owned Add appends one exact track and verifies the appended segment.
+- Verify compares the live playlist Source with the original TrackSequence.
+- Export writes the live target Source to a temporary YAML file and round-trips
+  it back through Source parsing.
+
+Credentialed command result: `2 passed, 0 skipped`.
+
+The account did not expose a safe pre-existing private empty target or
+collaborative target fixture for this pass. No private or collaborative
+playlist was modified, and no fixture URL requires deletion. Private creation
+remains fail-closed when Spotify persists a requested private create as public;
+offline tests cover empty, eligibility, partial-write, and persisted-state
+guards.
+
 Current checkpoint: Parent 1 is complete and Parent 2 is in progress through
 owned empty-target Build. The canonical TrackSequence, Source pipeline,
 authentication behavior, and top-level command shell are present. Parent 2
