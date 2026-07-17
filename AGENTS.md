@@ -2,6 +2,25 @@
 
 Read `docs/README.md` and `docs/GIT-WORKFLOW.md` before changing the repository. Linear implementation sessions must also follow the applicable task execution prompt.
 
+## Agent product guidance
+
+Read `SKILL.md` before acting as a playlist-building agent. Use Search and
+Inspect for discovery, then construct a durable YAML, JSON, or TXT Source with
+canonical Spotify track URIs. Preserve order and duplicates and pass names,
+targets, and privacy as command options. Build only new public playlists or
+owned empty targets; use Add only for verified append-only writes. Use Verify
+for exact peer comparison and Export for durable representations.
+
+Never substitute tracks generatively, accept raw Spotify IDs, read stdin,
+fetch arbitrary remote documents, overwrite files, repair playlists, resolve
+natural-language candidates during a write, or silently skip invalid entries.
+Use exit code 0 for success, 1 only for Verify mismatch, and 2 for handled
+errors. Credentials remain in gitignored `resources/spotify-secrets.env` and
+must never be opened, printed, copied, or committed by an agent.
+
+Implementation agents must report America/Chicago start/end timestamps, whole
+minutes, exact checks, failures or skips, changed paths, and the task commit.
+
 ## Completion contract
 
 - A change task is not Complete until its acceptance criteria are satisfied, every applicable check passes without unintended skips, and its task-owned changes are stored in a non-empty commit.
