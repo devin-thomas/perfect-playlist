@@ -2,7 +2,7 @@
 
 All notable changes to Perfect Playlist are documented here.
 
-## 0.1.0 - 2026-07-18
+## 1.0.0 - 2026-07-18
 
 Initial public release.
 

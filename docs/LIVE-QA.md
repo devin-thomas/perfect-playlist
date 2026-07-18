@@ -10,12 +10,12 @@ The independent final review traced the complete implementation and all 18 child
 
 Final validation uses the configured external Python 3.11 environment and temporary build/test directories outside the repository:
 
-- `$env:PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS='0'; python -m pytest --basetemp <external-temp>`: `133 passed, 2 skipped`; both skips are the explicitly opt-in live tests.
-- `$env:PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS='1'; python -m pytest --basetemp <external-temp>`: `135 passed, 0 skipped`.
+- `$env:PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS='0'; python -m pytest --basetemp <external-temp>`: `135 passed, 2 skipped`; both skips are the explicitly opt-in live tests.
+- `$env:PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS='1'; python -m pytest --basetemp <external-temp>`: `137 passed, 0 skipped`.
 - `python -m ruff check --no-cache perfect_playlist tests`: passed.
 - `python -m mypy --no-incremental perfect_playlist tests`: passed with no issues in 29 source files.
 - `python -m pip check`: no broken requirements.
-- `python -m pip wheel . --no-deps --wheel-dir <external-temp>`: built `perfect_playlist-0.1.0-py3-none-any.whl` outside the repository.
+- `python -m pip wheel . --no-deps --wheel-dir <external-temp>`: built `perfect_playlist-1.0.0-py3-none-any.whl` outside the repository.
 - `python -m build --outdir <external-temp>`: built the source distribution and wheel outside the repository.
 - `pwsh -NoProfile -File tests/Ralph.Core.Smoke.ps1`: passed.
 - CLI help smoke: exposed only Build, Add, Verify, Export, Search, Inspect, and Auth.

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "perfect-playlist"
-version = "0.1.0"
+version = "1.0.0"
 description = "Deterministic Spotify playlist creation from exact track URIs."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -15,7 +15,7 @@ authors = [
 ]
 keywords = ["spotify", "playlist", "cli", "deterministic"]
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 5 - Production/Stable",
   "Environment :: Console",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
