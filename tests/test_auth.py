@@ -71,6 +71,26 @@ def test_build_auth_manager_loads_repository_spotify_secrets_file(
     assert os.getenv("SPOTIPY_CLIENT_ID") == "client-id"
 
 
+def test_build_auth_manager_loads_configured_spotify_secrets_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    for name in ("SPOTIPY_CLIENT_ID", "SPOTIPY_CLIENT_SECRET", "SPOTIPY_REDIRECT_URI"):
+        monkeypatch.delenv(name, raising=False)
+    secrets_file = tmp_path / "spotify-secrets.env"
+    secrets_file.write_text(
+        "SPOTIPY_CLIENT_ID=client-id\n"
+        "SPOTIPY_CLIENT_SECRET=client-secret\n"
+        "SPOTIPY_REDIRECT_URI=http://127.0.0.1:4202\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("PERFECT_PLAYLIST_SECRETS_FILE", str(secrets_file))
+
+    build_auth_manager(cache_path=str(tmp_path / "token-cache.json"), open_browser=False)
+
+    assert os.getenv("SPOTIPY_CLIENT_ID") == "client-id"
+
+
 def test_build_auth_manager_maps_token_cache_filesystem_failure(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

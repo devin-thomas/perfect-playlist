@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.26"]
 build-backend = "hatchling.build"
 
 [project]
@@ -8,9 +8,18 @@ version = "0.1.0"
 description = "Deterministic Spotify playlist creation from exact track URIs."
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [
   { name = "Devin Thomas" }
+]
+keywords = ["spotify", "playlist", "cli", "deterministic"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
   "spotipy>=2.25",
@@ -20,6 +29,7 @@ dependencies = [
   "rich>=13.0",
   "pydantic>=2.0",
   "platformdirs>=4.0",
+  "pyyaml>=6.0",
 ]
 
 [project.optional-dependencies]
@@ -29,14 +39,11 @@ dev = [
     "mypy>=1.10",
     "types-PyYAML>=6.0",
 ]
-yaml = [
-  "pyyaml>=6.0",
-]
-
 [project.urls]
 Homepage = "https://github.com/devin-thomas/perfect-playlist"
 Repository = "https://github.com/devin-thomas/perfect-playlist"
 Issues = "https://github.com/devin-thomas/perfect-playlist/issues"
+Changelog = "https://github.com/devin-thomas/perfect-playlist/blob/main/CHANGELOG.md"
 
 [project.scripts]
 perfect-playlist = "perfect_playlist.cli:app"

@@ -27,6 +27,7 @@ REQUIRED_SPOTIFY_ENV_VARS = (
 )
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SPOTIFY_SECRETS_FILE = REPOSITORY_ROOT / "resources/spotify-secrets.env"
+SPOTIFY_SECRETS_FILE_ENV = "PERFECT_PLAYLIST_SECRETS_FILE"
 AUTH_REQUIRED_MESSAGE = (
     "Spotify authorization required. Run perfect-playlist auth login, then retry."
 )
@@ -53,6 +54,14 @@ def missing_spotify_auth_env() -> list[str]:
     return [name for name in REQUIRED_SPOTIFY_ENV_VARS if not os.getenv(name)]
 
 
+def spotify_secrets_file() -> Path:
+    """Return the optional configured secrets file or the checkout-local default."""
+    configured = os.getenv(SPOTIFY_SECRETS_FILE_ENV)
+    if configured:
+        return Path(configured).expanduser()
+    return SPOTIFY_SECRETS_FILE
+
+
 def build_auth_manager(
     *,
     scope: str | None = None,
@@ -61,7 +70,7 @@ def build_auth_manager(
 ) -> SpotifyOAuth:
     """Build the Spotipy OAuth manager for local CLI usage."""
     try:
-        load_dotenv(dotenv_path=SPOTIFY_SECRETS_FILE)
+        load_dotenv(dotenv_path=spotify_secrets_file())
     except OSError as exc:
         raise AuthConfigError("Could not read the repository Spotify auth configuration.") from exc
 
