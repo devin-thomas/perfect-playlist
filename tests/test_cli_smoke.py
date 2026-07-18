@@ -100,7 +100,7 @@ def test_inspect_human_output_includes_metadata() -> None:
         explicit=True,
     )
 
-    with patch("perfect_playlist.cli.get_tracks", return_value=[result]) as get_tracks_mock:
+    with patch("perfect_playlist.cli.inspect_track", return_value=result) as inspect_mock:
         response = CliRunner().invoke(
             app, ["inspect", "https://open.spotify.com/track/354WZaV3u6cuzTG2PmpYwm"]
         )
@@ -111,8 +111,8 @@ def test_inspect_human_output_includes_metadata() -> None:
     assert "Duration: 2:42" in response.output
     assert result.uri in response.output
     assert result.url in response.output
-    get_tracks_mock.assert_called_once_with(
-        ["https://open.spotify.com/track/354WZaV3u6cuzTG2PmpYwm"]
+    inspect_mock.assert_called_once_with(
+        "https://open.spotify.com/track/354WZaV3u6cuzTG2PmpYwm"
     )
 
 
@@ -126,7 +126,7 @@ def test_inspect_json_output_is_structured_track_data() -> None:
         explicit=True,
     )
 
-    with patch("perfect_playlist.cli.get_tracks", return_value=[result]):
+    with patch("perfect_playlist.cli.inspect_track", return_value=result):
         response = CliRunner().invoke(
             app,
             ["inspect", "spotify:track:354WZaV3u6cuzTG2PmpYwm", "--json"],

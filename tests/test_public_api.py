@@ -6,7 +6,12 @@ from perfect_playlist import (
     PlaylistCreateError,
     SourceVerificationResult,
     TrackSequence,
+    add_to_playlist,
+    build_public_playlist,
+    build_target_playlist,
     compare_track_sequences,
+    inspect_track,
+    search_tracks,
     serialize,
     track_links,
     write_export,
@@ -46,3 +51,12 @@ def test_root_api_keeps_typed_failures_distinct() -> None:
     assert issubclass(PlaylistAddError, Exception)
     assert issubclass(PlaylistCreateError, Exception)
     assert issubclass(ExportError, Exception)
+
+
+def test_root_api_exposes_every_deterministic_workflow() -> None:
+    assert callable(build_public_playlist)
+    assert callable(build_target_playlist)
+    assert callable(add_to_playlist)
+    assert callable(compare_track_sequences)
+    assert callable(search_tracks)
+    assert callable(inspect_track)

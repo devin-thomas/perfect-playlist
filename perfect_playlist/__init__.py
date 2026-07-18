@@ -31,9 +31,8 @@ from .playlist import (
     add_to_playlist,
     build_public_playlist,
     build_target_playlist,
-    create_playlist_from_uris,
 )
-from .search import get_tracks, search_tracks
+from .search import inspect_track, search_tracks
 from .track_refs import (
     extract_playlist_id,
     extract_track_id,
@@ -69,10 +68,9 @@ __all__ = [
     "add_to_playlist",
     "build_target_playlist",
     "build_public_playlist",
-    "create_playlist_from_uris",
     "extract_track_id",
     "extract_playlist_id",
-    "get_tracks",
+    "inspect_track",
     "is_track_uri",
     "is_raw_spotify_id",
     "normalize_track_ref",

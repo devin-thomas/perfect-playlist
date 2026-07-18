@@ -5,10 +5,11 @@ import pytest
 from spotipy.exceptions import SpotifyException
 
 from perfect_playlist.errors import TrackLookupError
-from perfect_playlist.search import get_tracks, search_tracks
+from perfect_playlist.search import get_tracks, inspect_track, search_tracks
 
+TRACK_URI = "spotify:track:354WZaV3u6cuzTG2PmpYwm"
 TRACK = {
-    "uri": "spotify:track:354WZaV3u6cuzTG2PmpYwm",
+    "uri": TRACK_URI,
     "external_urls": {"spotify": "https://open.spotify.com/track/354WZaV3u6cuzTG2PmpYwm"},
     "name": "Get The Message",
     "artists": [{"name": "The Paradox"}],
@@ -86,3 +87,35 @@ def test_search_tracks_maps_spotify_failure() -> None:
 def test_get_tracks_maps_spotify_failure() -> None:
     with pytest.raises(TrackLookupError, match="metadata lookup failed"):
         get_tracks(["spotify:track:354WZaV3u6cuzTG2PmpYwm"], client=FailingSearchClient())
+
+
+@pytest.mark.parametrize(
+    ("query", "limit", "message"),
+    [
+        ("", 4, "must not be empty"),
+        ("query", 0, "between 1 and 10"),
+        ("query", 11, "between 1 and 10"),
+    ],
+)
+def test_search_tracks_enforces_library_domain_rules(
+    query: str, limit: int, message: str
+) -> None:
+    with pytest.raises(TrackLookupError, match=message):
+        search_tracks(query, limit=limit, client=SearchClient())
+
+
+def test_inspect_track_returns_exactly_one_track() -> None:
+    result = inspect_track(TRACK_URI, client=SearchClient())
+
+    assert result.uri == TRACK_URI
+
+
+def test_track_lookup_rejects_malformed_spotify_metadata() -> None:
+    class MalformedMetadataClient(SearchClient):
+        def tracks(
+            self, tracks: Sequence[str], market: str | None = None
+        ) -> dict[str, Any]:
+            return {"tracks": [{"uri": TRACK_URI}]}
+
+    with pytest.raises(TrackLookupError, match="invalid track metadata"):
+        inspect_track(TRACK_URI, client=MalformedMetadataClient())

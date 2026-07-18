@@ -2,7 +2,7 @@
 
 This document is the authoritative product and behavior contract for the next Perfect Playlist CLI. The implementation plan derives from it; code, tests, tutorials, agent guidance, and command examples must agree with it.
 
-**Status:** Approved and ready for implementation.
+**Status:** Implemented; final release review completed against this contract.
 
 See [Product and Language](PRODUCT-AND-LANGUAGE.md) for the vision, origin, principles, and canonical terms.
 

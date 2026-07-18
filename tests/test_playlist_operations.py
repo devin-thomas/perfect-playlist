@@ -12,11 +12,11 @@ from perfect_playlist.errors import (
 )
 from perfect_playlist.models import TrackSequence
 from perfect_playlist.playlist import (
+    _create_playlist_from_uris,
     add_items_in_order,
     add_to_playlist,
     build_public_playlist,
     build_target_playlist,
-    create_playlist_from_uris,
 )
 
 
@@ -191,7 +191,7 @@ def test_create_playlist_validates_before_write() -> None:
     client = PlaylistClient()
 
     with pytest.raises(InvalidTrackRefError):
-        create_playlist_from_uris("Bad", ["not a track"], client=client)
+        _create_playlist_from_uris("Bad", ["not a track"], client=client)
 
     assert client.created == []
     assert client.added == []
@@ -201,7 +201,7 @@ def test_create_playlist_adds_in_exact_order() -> None:
     uris = [_track_uri(index) for index in range(3)]
     client = PlaylistClient(playlist_items=uris)
 
-    result = create_playlist_from_uris("Exact", uris, public=False, client=client)
+    result = _create_playlist_from_uris("Exact", uris, public=False, client=client)
 
     assert result.playlist.id == "playlist-123"
     assert result.playlist.snapshot_id == "snapshot-1"
@@ -216,7 +216,7 @@ def test_private_playlist_aborts_before_adding_when_spotify_persists_it_as_publi
     client = PlaylistClient(persisted_public=True)
 
     with pytest.raises(PlaylistCreateError, match="stored playlist as public"):
-        create_playlist_from_uris(
+        _create_playlist_from_uris(
             "Must stay private",
             [_track_uri(1)],
             public=False,
@@ -245,7 +245,16 @@ def test_add_items_in_order_chunks_sequentially() -> None:
 
 def test_create_playlist_maps_spotify_create_failure() -> None:
     with pytest.raises(PlaylistCreateError, match="Spotify rejected playlist creation"):
-        create_playlist_from_uris("Exact", [_track_uri(1)], client=FailingCreateClient())
+        _create_playlist_from_uris("Exact", [_track_uri(1)], client=FailingCreateClient())
+
+
+def test_public_playlist_aborts_before_adding_when_spotify_persists_it_as_private() -> None:
+    client = PlaylistClient(persisted_public=False)
+
+    with pytest.raises(PlaylistCreateError, match="stored playlist as private"):
+        build_public_playlist(TrackSequence(uris=(_track_uri(1),)), client=client)
+
+    assert client.added == []
 
 
 def test_add_items_reports_chunk_and_partial_playlist_url() -> None:

@@ -30,7 +30,7 @@ This project is not trying to replace recommendation systems. It provides the re
 - `search` and `inspect` expose facts without choosing tracks or writing playlists.
 - Repair and natural-language resolve workflows are removed from the interface.
 
-The approved CLI is specified in [the CLI contract](docs/CLI-CONTRACT.md). Parent 1 is complete: the canonical TrackSequence, Source pipeline, authentication behavior, and top-level command shell are in place. Parent 2 is in progress: Build, append-only Add, and peer Source Verify are implemented, while `export` remains fail closed; Parent 3 `search` and `inspect` do the same.
+The approved CLI is specified in [the CLI contract](docs/CLI-CONTRACT.md). All three implementation parents are complete: the canonical TrackSequence, Source pipeline, authentication behavior, deterministic write workflows, read-only discovery commands, agent guidance, and offline/live QA matrix are in place.
 
 ## Documentation
 
@@ -64,9 +64,6 @@ Populate the local, gitignored `resources/spotify-secrets.env`:
 SPOTIPY_CLIENT_ID=your_client_id_here
 SPOTIPY_CLIENT_SECRET=your_client_secret_here
 SPOTIPY_REDIRECT_URI=http://127.0.0.1:8888/callback
-SPOTIFY_REFRESH_TOKEN=your_refresh_token_here
-SPOTIFY_ACCOUNT_ID=your_account_id_here
-SPOTIFY_USER_ID=your_user_id_here
 LINEAR_API_KEY=your_linear_api_key_here
 PERFECT_PLAYLIST_RUN_INTEGRATION_TESTS=0
 ```
@@ -80,6 +77,45 @@ perfect-playlist auth login
 ```
 
 OAuth tokens are stored outside the repository in the operating-system user cache.
+
+## Usage
+
+Use Search and Inspect to choose exact tracks, store the chosen canonical URIs in a durable Source, and pass that Source to write commands:
+
+```powershell
+perfect-playlist search 'track:"Call On You" artist:"Corey Lingo"'
+perfect-playlist inspect spotify:track:5Qamlcya1Hz5Z4AgzdQ5q8
+perfect-playlist build examples/final-review-sample.yaml
+perfect-playlist add examples/final-review-sample.yaml --target spotify:playlist:PLAYLIST_ID
+perfect-playlist verify examples/final-review-sample.yaml spotify:playlist:PLAYLIST_ID
+perfect-playlist export spotify:playlist:PLAYLIST_ID --out playlist.yaml
+```
+
+With no `--name` or `--target`, Build creates a new public `My Perfect Playlist`, advancing to a numeric suffix if that name is already owned. Use `--target` only for an owned empty Build Target; Add requires `--target` and appends without changing earlier tracks or visibility.
+
+The importable API exposes the same workflow boundaries and typed results:
+
+```python
+from perfect_playlist import (
+    add_to_playlist,
+    build_public_playlist,
+    build_target_playlist,
+    compare_track_sequences,
+    inspect_track,
+    read_source,
+    search_tracks,
+)
+
+source = read_source("examples/final-review-sample.yaml")
+candidates = search_tracks('track:"Call On You" artist:"Corey Lingo"')
+selected = inspect_track(candidates[0].uri)
+built = build_public_playlist(source)
+target_build = build_target_playlist(source, "spotify:playlist:PLAYLIST_ID")
+added = add_to_playlist(source, "spotify:playlist:WRITABLE_PLAYLIST_ID")
+verification = compare_track_sequences(source, read_source(built.playlist.uri))
+```
+
+Search results and inspected metadata are command responses, not Sources. The caller deliberately chooses canonical URIs before Build or Add.
 
 ## Current Validation
 

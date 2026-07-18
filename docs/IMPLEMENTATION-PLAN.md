@@ -1,6 +1,6 @@
 # Perfect Playlist Implementation Plan
 
-**Status:** Parent 1 complete; Parent 2 is in progress through child [2.2].
+**Status:** All three implementation parents and the independent final review are complete.
 
 This is the sole active engineering plan. It reconciles the original build plan, the empty private playlist proposal, the completed task notes, the live-test handoff, and the approved CLI contract.
 
@@ -18,9 +18,7 @@ Children are also dependency-chained in coordinate order: `[1.0]` through `[1.6]
 
 ## Baseline
 
-Parent 1 is complete. The repository contains a root-level Python 3.11 package, one URI-only TrackSequence, extension-driven and Spotify Source ingestion, interactive/non-interactive authentication, typed Spotify adapter boundaries, and the approved top-level command shell. Superseded grouped commands, repair, resolve, dry-run, position-based add, prefix verification, and metadata-rich manifest workflows have been removed.
-
-Parent 2 is in progress. New-public Build, owned empty-target Build, append-only Add, and peer Source Verify implement their approved workflows; `export` remains fail closed with exit code `2` without Spotify or filesystem writes until its assigned task. Parent 3 `search` and `inspect` shells follow the same boundary. Existing lower-level playlist and lookup primitives are migration inputs for their assigned future tasks, not shipped implementations of those commands.
+The repository contains a root-level Python 3.11 package, one URI-only TrackSequence, extension-driven local and Spotify Source ingestion, interactive/non-interactive authentication, typed Spotify adapter boundaries, and the approved top-level command shell. New-public and owned-empty-target Build, append-only Add, peer Verify, safe Export, Search, and Inspect implement the approved contract. Superseded grouped commands, Repair, Resolve, dry-run, position-based Add, prefix Verify, metadata-rich manifest workflows, compatibility paths, and pending command shells have been removed.
 
 ## Credential Decision
 
@@ -60,7 +58,7 @@ Ordered child tasks:
 
 Parent 1 blocks Parent 2.
 
-## Parent 2 of 3 - Deliver Safe Deterministic Workflows (In Progress)
+## Parent 2 of 3 - Deliver Safe Deterministic Workflows (Complete)
 
 Outcome: Build, Add, Verify, and Export implement the complete approved contract with preflight safety and post-write verification.
 
@@ -75,7 +73,7 @@ Ordered child tasks:
 
 Parent 2 blocks Parent 3.
 
-## Parent 3 of 3 - Complete Read-Only Tools, Agent Interface, and QA (Not Started)
+## Parent 3 of 3 - Complete Read-Only Tools, Agent Interface, and QA (Complete)
 
 Outcome: discovery and inspection are agent-friendly, the new contract is comprehensively tested, and the credentialed release gate is honest and reproducible.
 
@@ -99,6 +97,8 @@ This task is outside the three parents and begins only after all three are compl
 - Remove stale terminology, dead examples, obsolete files, temporary fixtures, and misleading status claims.
 - Confirm secrets, `.env`, caches, authorization material, and private resources are untracked.
 - Report Chicago start/end times, minutes worked, exact check results, and any **FAILED OR SKIPPED TESTS** before marking complete.
+
+The final review is complete. Its reproducible offline and credentialed evidence, durable five-track sample Source, live playlist result, and cleanup findings are recorded in `docs/LIVE-QA.md`.
 
 ## Definition of Done
 

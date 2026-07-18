@@ -10,7 +10,6 @@ from perfect_playlist import (
     add_to_playlist,
     build_public_playlist,
     build_target_playlist,
-    create_playlist_from_uris,
     read_source,
 )
 from perfect_playlist.client import get_spotify_client
@@ -62,7 +61,7 @@ def test_create_public_playlist_from_example_and_verify_order() -> None:
     result = None
     try:
         sequence = read_source("examples/paradox-tiny-desk.txt")
-        result = create_playlist_from_uris(name, sequence.uris, public=True)
+        result = build_public_playlist(sequence, name=name)
 
         assert result.playlist.url.startswith("https://open.spotify.com/playlist/")
         assert read_source(result.playlist.uri) == sequence

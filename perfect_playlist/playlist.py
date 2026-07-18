@@ -14,7 +14,6 @@ from .models import CreatedPlaylist, PlaylistAddResult, PlaylistCreateResult, Tr
 from .track_refs import normalize_playlist_ref, normalize_track_ref
 
 T = TypeVar("T")
-DEFAULT_DESCRIPTION = "Created with perfect-playlist."
 PUBLIC_BUILD_DESCRIPTION = "Built with Perfect Playlist"
 DEFAULT_BUILD_NAME = "My Perfect Playlist"
 
@@ -31,7 +30,7 @@ def create_empty_playlist(
     name: str,
     *,
     public: bool = False,
-    description: str = DEFAULT_DESCRIPTION,
+    description: str = "",
     collaborative: bool = False,
     client: PlaylistClient | None = None,
 ) -> CreatedPlaylist:
@@ -45,15 +44,20 @@ def create_empty_playlist(
             collaborative=collaborative,
             description=description,
         )
-        if not public:
-            persisted = sp.playlist(playlist["id"], fields="public")
-            if persisted.get("public") is not False:
-                raise PlaylistCreateError(
-                    "Spotify stored playlist as public after private creation was requested. "
-                    "No tracks were added. Make the empty playlist private in a Spotify "
-                    "client before adding tracks: "
-                    f"{playlist['external_urls']['spotify']}"
-                )
+        persisted = sp.playlist(playlist["id"], fields="public")
+        if persisted.get("public") is not public:
+            stored_visibility = "private" if public else "public"
+            requested_visibility = "public" if public else "private"
+            guidance = (
+                " Make the empty playlist private in a Spotify client before adding tracks."
+                if not public
+                else ""
+            )
+            raise PlaylistCreateError(
+                f"Spotify stored playlist as {stored_visibility} after {requested_visibility} "
+                f"creation was requested. No tracks were added.{guidance} "
+                f"{playlist['external_urls']['spotify']}"
+            )
     except SPOTIFY_API_EXCEPTIONS as exc:
         raise PlaylistCreateError(f"Spotify rejected playlist creation for {name!r}.") from exc
 
@@ -183,12 +187,12 @@ def _read_add_target(playlist_id: str, client: PlaylistClient) -> dict[str, obje
     return playlist
 
 
-def create_playlist_from_uris(
+def _create_playlist_from_uris(
     name: str,
     uris: Sequence[str],
     *,
     public: bool = False,
-    description: str = DEFAULT_DESCRIPTION,
+    description: str = "",
     client: PlaylistClient | None = None,
 ) -> PlaylistCreateResult:
     """Create a playlist from exact track references."""
@@ -217,7 +221,7 @@ def build_public_playlist(
     sp = client or get_spotify_client()
     owned_names = _owned_playlist_names(sp)
     playlist_name = _choose_build_name(name, owned_names)
-    result = create_playlist_from_uris(
+    result = _create_playlist_from_uris(
         playlist_name,
         sequence.uris,
         public=True,

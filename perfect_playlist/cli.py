@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from pathlib import Path
-from typing import Annotated, NoReturn, TypeVar
+from typing import Annotated, TypeVar
 
 import typer
 from rich.console import Console
@@ -14,7 +14,7 @@ from .errors import InvalidTrackRefError, SpotifyExactError
 from .export import next_available_path, serialize, write_export
 from .io import read_source
 from .playlist import add_to_playlist, build_public_playlist, build_target_playlist
-from .search import get_tracks, search_tracks
+from .search import inspect_track, search_tracks
 from .track_refs import normalize_playlist_ref, normalize_track_ref
 from .verify import compare_track_sequences
 
@@ -35,14 +35,6 @@ def _run(action: Callable[[], T]) -> T:
     except SPOTIFY_API_EXCEPTIONS as exc:  # pragma: no cover - external failure boundary.
         console.print("[red]Spotify request failed.[/red]")
         raise typer.Exit(2) from exc
-
-
-def _pending_command(command: str, parent: str) -> NoReturn:
-    console.print(
-        f"[yellow]{command} is not implemented until {parent}. "
-        "No Spotify or filesystem changes were made.[/yellow]"
-    )
-    raise typer.Exit(2)
 
 
 @auth_app.command("login")
@@ -209,10 +201,7 @@ def inspect(
     if not track_reference.strip():
         raise typer.BadParameter("Track reference must not be empty.")
 
-    results = _run(lambda: get_tracks([track_reference]))
-    if not results:
-        raise typer.BadParameter("Spotify returned no accessible track for this reference.")
-    result = results[0]
+    result = _run(lambda: inspect_track(track_reference))
     if json_output:
         typer.echo(json.dumps({"track": result.model_dump()}))
         return
