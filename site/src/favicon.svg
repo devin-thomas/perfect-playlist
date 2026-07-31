@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Perfect Playlist">
+  <rect width="64" height="64" rx="8" fill="#050806"/>
+  <path d="M15 51V13h17c11 0 18 7 18 17S43 47 32 47H23v4H15Zm8-12h9c6 0 10-3 10-9s-4-9-10-9h-9v18Z" fill="#39e875"/>
+  <path d="M19 51V17h13c8 0 14 5 14 13s-6 13-14 13h-9" fill="none" stroke="#050806" stroke-width="2"/>
+</svg>

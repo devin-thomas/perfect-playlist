@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#050806">
+    <meta
+      name="description"
+      content="Perfect Playlist is the deterministic Spotify playlist CLI and Python package for exact tracks, exact order, safe writes, and verifiable results."
+    >
+    <link rel="canonical" href="https://perfectplaylist.dev/">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    >
+    <link rel="stylesheet" href="/styles.css">
+    <script type="module" src="/app.js"></script>
+    <title>Perfect Playlist | Exact Spotify playlists for people and agents</title>
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://perfectplaylist.dev/">
+    <meta property="og:title" content="Perfect Playlist">
+    <meta
+      property="og:description"
+      content="Build the Spotify playlist you chose, exactly as you chose it."
+    >
+    <meta name="twitter:card" content="summary">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareSourceCode",
+        "name": "Perfect Playlist",
+        "description": "Deterministic Spotify playlist creation from exact track URIs.",
+        "url": "https://perfectplaylist.dev",
+        "codeRepository": "https://github.com/devin-thomas/perfect-playlist",
+        "downloadUrl": "https://pypi.org/project/perfect-playlist/",
+        "programmingLanguage": "Python",
+        "runtimePlatform": "Python 3.11+",
+        "softwareVersion": "1.0.0",
+        "license": "https://opensource.org/license/mit"
+      }
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Perfect Playlist home">
+        <span class="brand-mark" aria-hidden="true">P</span>
+        <span>Perfect Playlist</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="#how-it-works">How it works</a>
+        <a href="#agent-skill">Agent skill</a>
+        <a href="https://pypi.org/project/perfect-playlist/" target="_blank" rel="noreferrer">PyPI</a>
+        <a href="https://github.com/devin-thomas/perfect-playlist" target="_blank" rel="noreferrer">GitHub</a>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero section-shell" id="top" aria-labelledby="hero-title">
+        <div class="grooves grooves-left" aria-hidden="true"></div>
+        <div class="hero-copy" data-reveal>
+          <h1 id="hero-title">Build the playlist you chose. <span>Exactly as you chose it.</span></h1>
+          <p class="hero-lede">
+            A deterministic CLI and Python package for exact Spotify playlists—preserving order,
+            duplicates, and every deliberate choice.
+          </p>
+          <div class="hero-actions">
+            <button class="button button-primary" type="button" data-copy="onboarding">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m7 7 5 5-5 5M13 17h5"/>
+              </svg>
+              <span data-button-label>Copy agent onboarding</span>
+            </button>
+            <a class="button button-secondary" href="https://pypi.org/project/perfect-playlist/" target="_blank" rel="noreferrer">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 9 8-4.5M12 12 4 7.5M12 12v9"/>
+              </svg>
+              Install from PyPI
+            </a>
+          </div>
+          <div class="install-command" aria-label="Install command">
+            <div>
+              <span class="command-label">Install the official 1.0.0 release</span>
+              <code><span aria-hidden="true">$</span> python -m pip install perfect-playlist</code>
+            </div>
+            <button class="icon-button" type="button" data-copy="install" aria-label="Copy install command">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="8" y="8" width="12" height="12" rx="1"/>
+                <path d="M16 8V4H4v12h4"/>
+              </svg>
+              <span class="visually-hidden" data-button-label>Copy install command</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="terminal" data-reveal aria-label="Perfect Playlist CLI workflow example">
+          <div class="terminal-bar">
+            <span>perfect-playlist</span>
+            <span class="terminal-status" aria-label="Ready"></span>
+          </div>
+          <div class="terminal-body">
+            <div class="terminal-step">
+              <span class="step-comment"># 1. search</span>
+              <code><b>$</b> perfect-playlist search 'track:"Call On You" artist:"Corey Lingo"' --json</code>
+              <span class="terminal-output">Candidates returned for deliberate review.</span>
+            </div>
+            <div class="terminal-step">
+              <span class="step-comment"># 2. inspect</span>
+              <code><b>$</b> perfect-playlist inspect spotify:track:5Qamlcya1Hz5Z4AgzdQ5q8 --json</code>
+              <span class="terminal-output">Canonical track URI confirmed.</span>
+            </div>
+            <div class="terminal-step">
+              <span class="step-comment"># 3. build</span>
+              <code><b>$</b> perfect-playlist build tracks.yaml --name "My Perfect Playlist"</code>
+              <span class="terminal-output terminal-success">✓ Created a new public playlist from exact URIs.</span>
+            </div>
+            <div class="terminal-step">
+              <span class="step-comment"># 4. verify</span>
+              <code><b>$</b> perfect-playlist verify tracks.yaml spotify:playlist:PLAYLIST_ID</code>
+              <span class="terminal-output terminal-success">✓ Exact ordered match. Duplicates preserved.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="proof-rail" aria-label="Core guarantees">
+          <strong>Deterministic by design</strong>
+          <span><i aria-hidden="true">01</i> Exact order</span>
+          <span><i aria-hidden="true">02</i> Duplicates preserved</span>
+          <span><i aria-hidden="true">03</i> URI-accurate</span>
+        </div>
+      </section>
+
+      <section class="workflow section-shell" id="how-it-works" aria-labelledby="workflow-title">
+        <div class="grooves grooves-right" aria-hidden="true"></div>
+        <div class="section-heading" data-reveal>
+          <p class="mono-label">Deterministic workflow</p>
+          <h2 id="workflow-title">Discovery can be intelligent. <span>The final write should be exact.</span></h2>
+          <p>Perfect Playlist removes the last interpretive handoff between choosing tracks and writing them to Spotify.</p>
+        </div>
+
+        <ol class="workflow-rail" data-reveal>
+          <li>
+            <span class="workflow-number">1</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg>
+            <strong>Search</strong>
+            <small>Find candidates</small>
+          </li>
+          <li>
+            <span class="workflow-number">2</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h2m2-5v10m4-13v16m4-12v8m4-5v2"/></svg>
+            <strong>Inspect</strong>
+            <small>Confirm the exact recording</small>
+          </li>
+          <li>
+            <span class="workflow-number">3</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1M14 11a5 5 0 0 0-7.1-.1l-2 2A5 5 0 0 0 12 20l1.1-1.1"/></svg>
+            <strong>Save exact URIs</strong>
+            <small>Preserve order + duplicates</small>
+          </li>
+          <li>
+            <span class="workflow-number">4</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M4 12h7M4 18h10M18 10v8m-4-4h8"/></svg>
+            <strong>Build</strong>
+            <small>Write once</small>
+          </li>
+          <li>
+            <span class="workflow-number">5</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 13 5 5L20 6"/></svg>
+            <strong>Verify</strong>
+            <small>Read back and compare</small>
+          </li>
+        </ol>
+
+        <div class="principles" data-reveal>
+          <div class="principle-copy">
+            <p class="mono-label">Why Perfect Playlist exists</p>
+            <h3>One dependable final-mile primitive.</h3>
+            <ul>
+              <li><strong>No substitutions</strong><span>Every URI you save is the URI written.</span></li>
+              <li><strong>No hidden reordering</strong><span>Your order remains your order.</span></li>
+              <li><strong>No silent skips</strong><span>If it cannot be written, you will know.</span></li>
+              <li><strong>No destructive overwrites</strong><span>Writes are new-build or explicit append-only operations.</span></li>
+            </ul>
+          </div>
+          <div class="code-panel" aria-label="TrackSequence YAML example">
+            <span class="code-panel-label">TrackSequence / YAML</span>
+            <pre><code><span>tracks:</span>
+  - spotify:track:5Qamlcya1Hz5Z4AgzdQ5q8
+  - spotify:track:5irdISp39LC6kD10muguYh
+  - spotify:track:5Qamlcya1Hz5Z4AgzdQ5q8
+
+<b># order and duplicates stay intact</b></code></pre>
+          </div>
+          <div class="verify-panel" aria-label="Verification result example">
+            <span class="code-panel-label">Verify output / exact match</span>
+            <pre><code>$ perfect-playlist verify source.yaml playlist.yaml
+
+<span>exact: true</span>
+expected_count: 3
+actual_count: 3
+first_difference: null
+
+<span>All tracks match exactly.</span></code></pre>
+          </div>
+        </div>
+      </section>
+
+      <section class="agent-onboarding" id="agent-skill" aria-labelledby="agent-title">
+        <div class="agent-grooves" aria-hidden="true"></div>
+        <div class="agent-inner section-shell">
+          <div class="agent-copy" data-reveal>
+            <span class="cursor-mark" aria-hidden="true">pp_</span>
+            <h2 id="agent-title">Give your agent the deterministic playlist tool.</h2>
+            <p>One click copies a complete onboarding prompt with the official site, PyPI package, CLI, repository, and agent skill.</p>
+            <button class="button button-dark" type="button" data-copy="onboarding">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="5" width="12" height="15" rx="1"/><path d="M9 5V3h6v2"/></svg>
+              <span data-button-label>Copy agent onboarding</span>
+            </button>
+            <nav class="agent-links" aria-label="Agent and distribution resources">
+              <a href="/SKILL.md">Read SKILL.md <span aria-hidden="true">↗</span></a>
+              <a href="https://pypi.org/project/perfect-playlist/" target="_blank" rel="noreferrer">View on PyPI <span aria-hidden="true">↗</span></a>
+              <a href="https://github.com/devin-thomas/perfect-playlist" target="_blank" rel="noreferrer">Open GitHub repo <span aria-hidden="true">↗</span></a>
+            </nav>
+          </div>
+          <div class="prompt-preview" data-reveal aria-label="Agent onboarding prompt preview">
+            <div class="line-numbers" aria-hidden="true">01<br>02<br>03<br>04<br>05<br>06<br>07<br>08<br>09<br>10</div>
+            <pre><code>Learn and use Perfect Playlist for deterministic
+Spotify playlist work.
+
+<span>Official site:</span>     https://perfectplaylist.dev
+<span>PyPI package:</span>      pypi.org/project/perfect-playlist
+<span>GitHub repository:</span> github.com/devin-thomas/perfect-playlist
+<span>Agent skill:</span>       perfectplaylist.dev/SKILL.md
+
+Install: python -m pip install perfect-playlist
+Then read SKILL.md before Spotify-backed work.</code></pre>
+            <a href="/agent-onboarding.txt" aria-label="Open the complete onboarding prompt as text">Open full prompt <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+      </section>
+
+      <section class="distribution section-shell" aria-labelledby="distribution-title">
+        <div class="distribution-copy" data-reveal>
+          <p class="mono-label">Official distribution</p>
+          <h2 id="distribution-title">Install the 1.0.0 release from PyPI.</h2>
+          <p>The same package provides the <code>perfect-playlist</code> command and the importable Python API.</p>
+        </div>
+        <div class="distribution-command" data-reveal>
+          <code>python -m pip install perfect-playlist</code>
+          <button class="copy-command" type="button" data-copy="install">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="1"/><path d="M16 8V4H4v12h4"/></svg>
+            <span data-button-label>Copy</span>
+          </button>
+        </div>
+        <ul class="distribution-facts" data-reveal>
+          <li><span aria-hidden="true">3.11</span>Python 3.11+</li>
+          <li><span aria-hidden="true">MIT</span>MIT licensed</li>
+          <li><span aria-hidden="true">✓</span>PyPI trusted publishing</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="site-footer section-shell">
+      <div class="footer-brand">
+        <a class="brand" href="#top">
+          <span class="brand-mark footer-mark" aria-hidden="true">P</span>
+          <span>Perfect Playlist</span>
+        </a>
+        <p>Built for exact choices, safe writes, and verifiable results.</p>
+      </div>
+      <nav aria-label="Footer product links">
+        <strong>Product</strong>
+        <a href="#how-it-works">How it works</a>
+        <a href="#agent-skill">Agent onboarding</a>
+        <a href="/SKILL.md">SKILL.md</a>
+      </nav>
+      <nav aria-label="Footer resource links">
+        <strong>Resources</strong>
+        <a href="https://github.com/devin-thomas/perfect-playlist" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://pypi.org/project/perfect-playlist/" target="_blank" rel="noreferrer">PyPI</a>
+        <a href="https://github.com/devin-thomas/perfect-playlist/blob/main/CHANGELOG.md" target="_blank" rel="noreferrer">Changelog</a>
+      </nav>
+      <div class="footer-bottom">
+        <span class="cursor-mark" aria-hidden="true">pp_</span>
+        <span>Perfect Playlist 1.0.0 · MIT</span>
+      </div>
+    </footer>
+
+    <div class="copy-status" data-copy-status role="status" aria-live="polite" hidden></div>
+  </body>
+</html>

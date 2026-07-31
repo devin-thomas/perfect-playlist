@@ -1,0 +1,16 @@
+{
+  "name": "perfect-playlist-site",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The official Perfect Playlist product and agent onboarding site.",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "npm run build && node --check src/app.js && node --test tests/*.test.mjs",
+    "dev": "npm run build && wrangler dev",
+    "deploy": "npm run check && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.118.0"
+  }
+}

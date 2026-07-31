@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "perfect-playlist",
+  "main": "./worker/index.js",
+  "compatibility_date": "2026-07-31",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page",
+    "run_worker_first": true
+  },
+  "routes": [
+    {
+      "pattern": "perfectplaylist.dev",
+      "custom_domain": true
+    }
+  ]
+}

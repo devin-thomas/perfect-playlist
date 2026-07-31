@@ -40,7 +40,7 @@ dev = [
     "types-PyYAML>=6.0",
 ]
 [project.urls]
-Homepage = "https://github.com/devin-thomas/perfect-playlist"
+Homepage = "https://perfectplaylist.dev"
 Repository = "https://github.com/devin-thomas/perfect-playlist"
 Issues = "https://github.com/devin-thomas/perfect-playlist/issues"
 Changelog = "https://github.com/devin-thomas/perfect-playlist/blob/main/CHANGELOG.md"

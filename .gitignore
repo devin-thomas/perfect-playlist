@@ -9,6 +9,8 @@ __pycache__/
 .mypy_cache_local/
 .ruff_cache/
 .venv/
+node_modules/
+.wrangler/
 dist/
 build/
 *.egg-info/

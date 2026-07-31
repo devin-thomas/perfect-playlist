@@ -4,6 +4,11 @@ Build the Spotify playlist you chose, exactly as you chose it.
 
 Perfect Playlist is a local CLI and importable Python package for turning an ordered set of exact Spotify track references into an exact playlist. It preserves order and duplicates, validates before writing, and verifies what Spotify stored afterward.
 
+Visit [perfectplaylist.dev](https://perfectplaylist.dev) for the product overview,
+official PyPI install, and one-click AI-agent onboarding. The canonical
+[agent skill](https://perfectplaylist.dev/SKILL.md) is published from this
+repository during each site build.
+
 ## Vision
 
 AI should be able to build a deterministic playlist without outsourcing the final decision to another generative system. Perfect Playlist is intended to become that dependable final-mile primitive for both people and AI agents.
