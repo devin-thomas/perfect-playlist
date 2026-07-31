@@ -59,5 +59,8 @@ test("worker adds browser security headers to static responses", async () => {
 
   assert.equal(response.headers.get("X-Content-Type-Options"), "nosniff");
   assert.equal(response.headers.get("Cross-Origin-Opener-Policy"), "same-origin");
-  assert.match(response.headers.get("Content-Security-Policy"), /frame-ancestors 'none'/);
+  const policy = response.headers.get("Content-Security-Policy");
+  assert.match(policy, /frame-ancestors 'none'/);
+  assert.match(policy, /script-src 'self' https:\/\/static\.cloudflareinsights\.com/);
+  assert.match(policy, /connect-src 'self' https:\/\/cloudflareinsights\.com/);
 });
