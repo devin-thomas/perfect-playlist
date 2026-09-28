@@ -1,0 +1,14 @@
+{
+  "name": "perfect-playlist-scroll-preview",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "npm run build && wrangler dev --config wrangler.jsonc",
+    "preview": "npm run build && wrangler deploy --config wrangler.jsonc"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.63.0",
+    "wrangler": "4.143.0"
+  }
+}

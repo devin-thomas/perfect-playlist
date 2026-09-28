@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#eef1ec">
+    <meta name="description" content="Build the exact Spotify playlist you chose, in the order you chose it.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23eef1ec'/><path d='M9 9h14v14H9z' fill='%2339e875'/></svg>">
+    <link rel="stylesheet" href="scrollcraft.css">
+    <link rel="stylesheet" href="page.css">
+    <title>Perfect Playlist | Keep every choice</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <span data-sc-progress aria-hidden="true"></span>
+    <div class="sc-grain" aria-hidden="true"></div>
+
+    <aside class="folio" aria-label="Current chapter" aria-live="polite">
+      <span class="folio__mark" aria-hidden="true">P</span>
+      <span class="folio__rule" aria-hidden="true"></span>
+      <span class="folio__number" data-folio-number>00</span>
+      <span class="folio__title" data-folio-title>Title page</span>
+    </aside>
+
+    <main id="main">
+      <header class="title-page" id="top" data-chapter="00" data-title="Title page">
+        <div class="title-page__top">
+          <a class="wordmark" href="#top" aria-label="Perfect Playlist home">
+            <span class="wordmark__mark" aria-hidden="true">P</span>
+            <span>Perfect Playlist</span>
+          </a>
+          <span class="title-page__edition">A field note on exact playlists</span>
+        </div>
+        <div class="title-page__body">
+          <p class="title-page__date">Spotify / Deterministic playlist building</p>
+          <h1>Keep every choice.<br><em>Every time.</em></h1>
+          <p class="title-page__lede">A playlist builder for the tracks you chose, in the order you chose them.</p>
+        </div>
+        <div class="title-page__foot">
+          <span>Exact track URIs</span>
+          <span>Exact sequence</span>
+          <span>Verified read-back</span>
+        </div>
+      </header>
+
+      <section class="chapter chapter--recognition" id="recognition" data-chapter="01" data-title="The handoff" aria-labelledby="recognition-title">
+        <div class="chapter__inner chapter__inner--split" data-sc-in data-sc-stagger="65">
+          <div class="chapter__margin">
+            <span class="chapter__label">The handoff</span>
+            <span class="chapter__hairline" aria-hidden="true"></span>
+            <span class="chapter__note">Choosing is not the same as writing.</span>
+          </div>
+          <div class="chapter__copy">
+            <h2 id="recognition-title">The idea is yours.<br>The result should be, too.</h2>
+            <p>Playlist generation can blur a clear intention. A track gets substituted. An order shifts. A duplicate disappears.</p>
+            <p>Perfect Playlist starts after discovery. Search and Inspect help you choose. Build writes the exact Spotify track references you saved. The same local CLI works for people and AI agents.</p>
+            <a class="text-link" href="https://github.com/devin-thomas/perfect-playlist/blob/main/docs/PRODUCT-AND-LANGUAGE.md" target="_blank" rel="noreferrer">Read the product principles <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+      </section>
+
+      <section class="chapter chapter--sequence" id="sequence" data-chapter="02" data-title="The sequence" data-sc-act="flow" aria-labelledby="sequence-title">
+        <div class="chapter__inner chapter__inner--spread">
+          <div class="chapter__copy chapter__copy--narrow" data-sc-in>
+            <span class="chapter__label">One portable source</span>
+            <h2 id="sequence-title">First, make the choice durable.</h2>
+            <p>A TrackSequence is a plain ordered list of canonical Spotify URIs. It carries the selection from the moment you make it to the moment Spotify receives it.</p>
+          </div>
+          <figure class="sequence-figure" aria-labelledby="sequence-caption">
+            <div class="sequence-figure__paper">
+              <svg class="sequence-drawing" viewBox="0 0 760 390" role="img" aria-labelledby="drawing-title drawing-desc" data-sc-reveal="left" data-sc-reveal-at="0.08 0.76" data-sc-parallax="0.055">
+                <title id="drawing-title">An exact sequence travelling to a playlist</title>
+                <desc id="drawing-desc">Three ordered track references pass through a Build operation. The first track appears twice, in the same two positions, in the result.</desc>
+                <g class="drawing-grid" aria-hidden="true">
+                  <path d="M30 65H730M30 130H730M30 195H730M30 260H730M30 325H730" />
+                  <path d="M100 30V360M220 30V360M340 30V360M460 30V360M580 30V360M700 30V360" />
+                </g>
+                <g class="drawing-ink">
+                  <text x="40" y="38">SOURCE / TRACKSEQUENCE</text>
+                  <text x="540" y="38">SPOTIFY / PLAYLIST</text>
+                  <rect x="48" y="85" width="202" height="220" rx="3" />
+                  <rect x="510" y="85" width="202" height="220" rx="3" />
+                  <path class="drawing-route" d="M250 122 C350 122 405 122 510 122M250 195 C350 195 405 195 510 195M250 268 C350 268 405 268 510 268" />
+                  <circle cx="72" cy="122" r="7" /><circle cx="72" cy="195" r="7" /><circle cx="72" cy="268" r="7" />
+                  <circle cx="536" cy="122" r="7" /><circle cx="536" cy="195" r="7" /><circle cx="536" cy="268" r="7" />
+                  <text x="91" y="126">track URI</text><text x="91" y="199">track URI</text><text x="91" y="272">track URI</text>
+                  <text x="555" y="126">same track</text><text x="555" y="199">same track</text><text x="555" y="272">same track</text>
+                  <rect class="build-stamp" x="318" y="156" width="124" height="78" rx="2" />
+                  <text class="build-stamp__title" x="342" y="188">BUILD</text>
+                  <text class="build-stamp__sub" x="331" y="207">write + read back</text>
+                </g>
+                <g class="drawing-measure" aria-hidden="true">
+                  <path d="M250 73v16M510 73v16M250 80h260M245 80h10M505 80h10" />
+                  <text x="359" y="70">ORDER HELD</text>
+                </g>
+              </svg>
+            </div>
+            <figcaption id="sequence-caption"><span>Fig. 1</span> One ordered source, written and checked as the same sequence.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="chapter chapter--alignment" id="alignment" data-chapter="03" data-title="The comparison" data-sc-act="pin" data-sc-span="3.5" aria-labelledby="alignment-title">
+        <div class="alignment-stage" data-sc-stage data-sc-verify-state="0">
+          <div class="alignment-stage__head">
+            <div>
+              <span class="chapter__label">The comparison / sample data</span>
+              <h2 id="alignment-title">The same tracks.<br>The same positions.</h2>
+              <p>This is a local demonstration using exact URIs from the project’s QA sample. It does not connect to Spotify or write a playlist.</p>
+            </div>
+            <div class="alignment-stage__status" data-verify-status role="status" aria-live="polite">
+              <span class="status-dot" aria-hidden="true"></span>
+              <span data-status-copy>Ready to compare</span>
+            </div>
+          </div>
+
+          <div class="alignment-table" data-alignment-table>
+            <div class="alignment-table__column">
+              <h3>Chosen source <span>3 entries</span></h3>
+              <ol class="track-list" data-source-list>
+                <li data-track-row="0"><span class="track-list__index">01</span><span class="track-list__detail"><strong>Call On You</strong><small>Corey Lingo</small></span><code>5Qamlcya1Hz5Z4AgzdQ5q8</code></li>
+                <li data-track-row="1"><span class="track-list__index">02</span><span class="track-list__detail"><strong>gooey</strong><small>GOONIE, iayze</small></span><code>5irdISp39LC6kD10muguYh</code></li>
+                <li data-track-row="2"><span class="track-list__index">03</span><span class="track-list__detail"><strong>Call On You</strong><small>Corey Lingo · same URI as 01</small></span><code>5Qamlcya1Hz5Z4AgzdQ5q8</code></li>
+              </ol>
+            </div>
+            <svg class="alignment-lines" viewBox="0 0 1000 240" preserveAspectRatio="none" aria-hidden="true">
+              <path data-compare-line="0" d="M0 40 C280 40 720 40 1000 40" />
+              <path data-compare-line="1" d="M0 120 C280 120 720 120 1000 120" />
+              <path data-compare-line="2" d="M0 200 C280 200 720 200 1000 200" />
+            </svg>
+            <div class="alignment-table__column alignment-table__column--result">
+              <h3>Spotify read-back <span>ordered result</span></h3>
+              <ol class="track-list" data-result-list>
+                <li data-track-row="0"><span class="track-list__index">01</span><span class="track-list__detail"><strong>Call On You</strong><small>Corey Lingo</small></span><code>5Qamlcya1Hz5Z4AgzdQ5q8</code></li>
+                <li data-track-row="1"><span class="track-list__index">02</span><span class="track-list__detail"><strong>gooey</strong><small>GOONIE, iayze</small></span><code>5irdISp39LC6kD10muguYh</code></li>
+                <li data-track-row="2"><span class="track-list__index">03</span><span class="track-list__detail"><strong>Call On You</strong><small>Corey Lingo · same URI as 01</small></span><code>5Qamlcya1Hz5Z4AgzdQ5q8</code></li>
+              </ol>
+            </div>
+          </div>
+
+          <div class="alignment-stage__foot">
+            <div class="alignment-actions">
+              <button class="action-button action-button--primary" type="button" data-verify>Verify exact order</button>
+              <button class="action-button" type="button" data-swap>Swap positions 2 and 3</button>
+              <button class="action-button action-button--quiet" type="button" data-restore>Restore sample</button>
+            </div>
+            <p class="alignment-note" data-result-note>Each row is compared by its canonical URI. Order and duplicates stay in the comparison.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="chapter chapter--proof" id="proof" data-chapter="04" data-title="The proof" data-sc-act="flow" aria-labelledby="proof-title">
+        <div class="chapter__inner chapter__inner--proof">
+          <div class="chapter__copy" data-sc-in>
+            <span class="chapter__label">Read it back</span>
+            <h2 id="proof-title">A success message is not the proof.</h2>
+            <p>Build reads the playlist back and compares the ordered TrackSequence. Verify can also compare any two Sources directly.</p>
+          </div>
+          <div class="proof-note" data-sc-count="0 3" data-sc-count-ms="900" aria-label="Three exact ordered track references in the sample">
+              <span class="proof-note__number" data-sc-count="0 3" data-sc-count-ms="900">3</span>
+            <span class="proof-note__label">entries in the example sequence</span>
+            <span class="proof-note__detail">including one preserved duplicate</span>
+          </div>
+        </div>
+      </section>
+
+      <footer class="colophon" id="install" data-chapter="05" data-title="Install">
+        <div class="colophon__top">
+          <span class="chapter__label">Perfect Playlist / Python 3.11+</span>
+          <span class="colophon__license">MIT licensed</span>
+        </div>
+        <p class="colophon__statement">The choices stay yours.</p>
+        <p class="colophon__action"><a href="https://pypi.org/project/perfect-playlist/" target="_blank" rel="noreferrer" data-sc-reveal="left" data-sc-reveal-at="0.06 0.88">Install Perfect Playlist <span aria-hidden="true">↗</span></a></p>
+        <div class="colophon__bottom">
+          <a href="https://github.com/devin-thomas/perfect-playlist" target="_blank" rel="noreferrer">Source on GitHub</a>
+          <a href="https://perfectplaylist.dev/SKILL.md" target="_blank" rel="noreferrer">Agent skill</a>
+          <a href="https://github.com/devin-thomas/perfect-playlist/blob/main/docs/CLI-CONTRACT.md" target="_blank" rel="noreferrer">CLI contract</a>
+        </div>
+      </footer>
+    </main>
+
+    <script src="scrollcraft.js"></script>
+    <script src="page.js"></script>
+  </body>
+</html>
